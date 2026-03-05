@@ -12,10 +12,8 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PromotionAppliedResult {
-    private Boolean success;
-    private String promCode;
+    private boolean success;
     private BigDecimal discountAmount;
-    private BigDecimal finalPrice;
+    private BigDecimal newTotal;
     private String message;
-    private String errorCode;
 }

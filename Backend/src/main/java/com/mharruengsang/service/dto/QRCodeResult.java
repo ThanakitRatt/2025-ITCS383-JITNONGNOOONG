@@ -10,9 +10,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class QRCodeResult {
-    private Boolean success;
-    private String qrImageBase64;
-    private String rawData;
+    private boolean success;
+    private String qrCodeBase64;
+    private String qrCodeData;
     private String message;
     private String errorCode;
 }

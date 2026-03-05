@@ -1,7 +1,7 @@
 package com.mharruengsang.service;
 
 import com.mharruengsang.dto.RiderLocationDTO;
-import com.mharruengsang.service.NearbyRiderInfo;
+import com.mharruengsang.service.dto.NearbyRiderInfo;
 
 import java.util.List;
 

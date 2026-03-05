@@ -9,8 +9,10 @@ import com.mharruengsang.service.dto.PaymentVerificationResult;
 import com.mharruengsang.service.dto.RefundResult;
 import com.stripe.Stripe;
 import com.stripe.model.Charge;
+import com.stripe.model.Refund;
 import com.stripe.model.Token;
 import com.stripe.param.ChargeCreateParams;
+import com.stripe.param.RefundCreateParams;
 import com.stripe.param.TokenCreateParams;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,8 +43,8 @@ public class StripePaymentProvider implements PaymentGatewayProvider {
                     .setCard(
                             TokenCreateParams.Card.builder()
                                     .setNumber(request.getCardNumber())
-                                    .setExpMonth(Integer.parseInt(request.getExpiryMonth()))
-                                    .setExpYear(Integer.parseInt(request.getExpiryYear()))
+                                    .setExpMonth(request.getExpiryMonth())
+                                    .setExpYear(request.getExpiryYear())
                                     .setCvc(request.getCvc())
                                     .build()
                     )
@@ -133,11 +135,15 @@ public class StripePaymentProvider implements PaymentGatewayProvider {
     public RefundResult refundPayment(String transactionId, BigDecimal amount) {
         try {
             Charge charge = Charge.retrieve(transactionId);
-            charge.refund();
+            RefundCreateParams params = RefundCreateParams.builder()
+                    .setCharge(transactionId)
+                    .setAmount(convertToStripeAmount(amount))
+                    .build();
+            Refund refund = Refund.create(params);
             
             return new RefundResult(
                     true,
-                    charge.getId(),
+                    refund.getId(),
                     "Refund processed successfully"
             );
         } catch (Exception e) {

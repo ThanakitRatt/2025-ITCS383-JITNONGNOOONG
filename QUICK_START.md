@@ -21,8 +21,14 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/mharruengsang?useSSL=false&serverTimezone=UTC
     username: root
-    password: root  # Your MySQL password
+    password: YOUR_MYSQL_ROOT_PASSWORD  # ← Replace with your MySQL root password
 ```
+
+**Where to find your MySQL password:**
+- If you installed MySQL recently, check your installation notes
+- Default MySQL root password (if you didn't set one): leave blank or use `root`
+- If using XAMPP: password is usually blank (leave empty)
+- If using WAMP/MAMP: check your setup documentation
 
 ## Step 3: Run Backend (2 min)
 ```bash

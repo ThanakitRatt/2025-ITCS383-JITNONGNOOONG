@@ -1,6 +1,7 @@
 package com.mharruengsang.service;
 
 import com.mharruengsang.dto.PromotionDTO;
+import com.mharruengsang.service.dto.PromotionAppliedResult;
 
 import java.util.List;
 
@@ -35,14 +36,4 @@ public interface PromotionService {
      * Validate and apply promotion code to order
      */
     PromotionAppliedResult applyPromotion(Long orderId, String promotionCode, Long customerId);
-}
-
-@lombok.Data
-@lombok.NoArgsConstructor
-@lombok.AllArgsConstructor
-class PromotionAppliedResult {
-    private boolean success;
-    private java.math.BigDecimal discountAmount;
-    private java.math.BigDecimal newTotal;
-    private String message;
 }

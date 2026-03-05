@@ -5,8 +5,8 @@ spring:
   # Database Configuration
   datasource:
     url: jdbc:mysql://localhost:3306/mharruengsang?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: 
-    password: 
+    username: root
+    password: 15102547 # ← Replace with your actual MySQL root password
     driver-class-name: com.mysql.cj.jdbc.Driver
   
   jpa:

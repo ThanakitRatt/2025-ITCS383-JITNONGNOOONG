@@ -11,12 +11,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class NearbyRiderInfo {
     private Long riderId;
-    private String name;
+    private String riderName;
     private Double latitude;
     private Double longitude;
-    private Double distance;
-    private String status;
-    private String riderPhone;
-    private Double averageRating;
-    private Integer estimatedETA; // in minutes
+    private Double distanceKm;
+    private Double estimatedArrivalMinutes;
+    private Double riderRating;
 }

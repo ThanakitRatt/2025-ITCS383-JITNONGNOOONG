@@ -1,5 +1,6 @@
 package com.mharruengsang.service;
 
+import com.mharruengsang.service.dto.NearbyRiderInfo;
 import java.util.List;
 
 public interface GeolocationService {
@@ -13,17 +14,4 @@ public interface GeolocationService {
      * Find nearby riders within specified radius
      */
     List<NearbyRiderInfo> findNearbyRiders(Double customerLat, Double customerLng, Double radiusKm, String riderStatus);
-}
-
-@lombok.Data
-@lombok.NoArgsConstructor
-@lombok.AllArgsConstructor
-class NearbyRiderInfo {
-    private Long riderId;
-    private String riderName;
-    private Double latitude;
-    private Double longitude;
-    private Double distanceKm;
-    private Double estimatedArrivalMinutes;
-    private Double riderRating;
 }

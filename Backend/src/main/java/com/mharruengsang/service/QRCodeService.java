@@ -1,5 +1,6 @@
 package com.mharruengsang.service;
 
+import com.mharruengsang.service.dto.QRCodeResult;
 import java.util.Base64;
 
 public interface QRCodeService {
@@ -13,15 +14,4 @@ public interface QRCodeService {
      * Generate static PromptPay QR code (no specific amount)
      */
     QRCodeResult generateStaticPromptPayQR(String phoneNumber);
-}
-
-@lombok.Data
-@lombok.NoArgsConstructor
-@lombok.AllArgsConstructor
-class QRCodeResult {
-    private boolean success;
-    private String qrCodeBase64; // Base64 encoded PNG
-    private String qrCodeData; // Raw QR code data/string
-    private String message;
-    private String errorCode;
 }

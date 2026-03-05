@@ -10,10 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BankTransferResult {
-    private Boolean success;
-    private String referenceNumber;
-    private String accountNumber;
-    private String bankName;
+    private boolean success;
+    private String bankReferenceNumber;
+    private String bankAccountDetails;
     private String message;
-    private String errorCode;
 }
