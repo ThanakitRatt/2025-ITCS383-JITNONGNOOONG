@@ -547,7 +547,10 @@ public class RestaurantService {
         }
 
         // Set computed fields
-        dto.setDietaryTags(menuItem.getDietaryTags());
+        String tags = menuItem.getDietaryTags();
+        dto.setDietaryTags(tags != null && !tags.isEmpty() ? 
+            java.util.Arrays.asList(tags.split(",\\s*")) : 
+            java.util.Collections.emptyList());
         dto.setTotalPreparationTime(menuItem.getTotalPreparationTime());
         dto.setCanBeOrdered(menuItem.canBeOrdered());
 

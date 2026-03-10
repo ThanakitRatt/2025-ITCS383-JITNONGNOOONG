@@ -1,0 +1,110 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mhar-api-gateway
+  
+  cloud:
+    gateway:
+      routes:
+        # Auth Service Routes
+        - id: auth-service
+          uri: lb://mhar-auth-service
+          predicates:
+            - Path=/api/v1/auth/**
+          filters:
+            - StripPrefix=3
+
+        # Order Service Routes  
+        - id: order-service
+          uri: lb://mhar-order-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 1000
+                redis-rate-limiter.burstCapacity: 2000
+                redis-rate-limiter.requestedTokens: 1
+
+        # Restaurant Service Routes
+        - id: restaurant-service
+          uri: lb://mhar-restaurant-service
+          predicates:
+            - Path=/api/v1/restaurants/**
+          filters:
+            - StripPrefix=3
+
+        # Payment Service Routes
+        - id: payment-service
+          uri: lb://mhar-payment-service
+          predicates:
+            - Path=/api/v1/payments/**
+          filters:
+            - StripPrefix=3
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 500
+                redis-rate-limiter.burstCapacity: 1000
+
+        # Rider Service Routes
+        - id: rider-service
+          uri: lb://mhar-rider-service
+          predicates:
+            - Path=/api/v1/riders/**
+          filters:
+            - StripPrefix=3
+
+      # Global CORS Configuration
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: 
+              - "http://localhost:5173"  # React dev server
+              - "http://localhost:3000"  # Alternative React port
+              - "https://mhar-rueng-sang.com"  # Production domain
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+
+      # Circuit Breaker Configuration
+      circuitbreaker:
+        resilience4j:
+          enabled: true
+
+  # Redis Configuration for Rate Limiting
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    timeout: 2000ms
+
+# Eureka Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+
+# Logging Configuration
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    com.itcs383.gateway: INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

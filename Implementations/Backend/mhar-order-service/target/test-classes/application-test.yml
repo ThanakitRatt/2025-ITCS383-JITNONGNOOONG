@@ -1,0 +1,72 @@
+# Test Configuration for Order Service
+# Optimized for fast test execution with in-memory database
+
+spring:
+  # In-memory H2 database for testing
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    
+  # JPA Configuration for testing
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+        use_sql_comments: true
+    open-in-view: false
+        
+  # H2 Console for debugging (only in test)
+  h2:
+    console:
+      enabled: true
+      
+  # Cache configuration - use simple cache for tests (no Redis dependency)
+  cache:
+    type: simple
+
+# Logging configuration for tests
+logging:
+  level:
+    com.itcs383.order: DEBUG
+    org.springframework.web: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    
+# Application specific configuration
+app:
+  order:
+    max-order-amount: 10000.00
+    default-delivery-fee: 35.00
+    free-delivery-threshold: 300.00
+    number-prefix: "TEST"
+    cancellation-window-minutes: 5
+    default-page-size: 20
+    max-page-size: 100
+  services:
+    restaurant-service:
+      url: http://localhost:8080  # Mock URL for tests
+    payment-service:
+      url: http://localhost:8082  # Mock URL for tests
+    notification-service:
+      url: http://localhost:8083  # Mock URL for tests
+    
+# Test-specific settings
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+        
+server:
+  port: 0  # Random port for testing
+
+# Disable Eureka for tests
+eureka:
+  client:
+    enabled: false

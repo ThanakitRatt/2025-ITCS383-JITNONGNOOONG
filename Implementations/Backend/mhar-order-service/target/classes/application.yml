@@ -1,0 +1,151 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: mhar-order-service
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mhar_orders
+    username: ${DB_USERNAME:thanapornartidtayamontol}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+    open-in-view: false
+
+  # Redis Configuration for Caching
+  redis:
+    host: localhost
+    port: 6379
+    database: 1
+    timeout: 2000ms
+    jedis:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 300000  # 5 minutes
+      cache-null-values: false
+
+# Eureka Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  health:
+    redis:
+      enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    com.itcs383.order: INFO
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: logs/order-service.log
+
+# Custom Application Properties
+app:
+  order:
+    # Order number generation
+    number-prefix: "MR"
+    
+    # Business rules
+    max-order-amount: 10000.00
+    free-delivery-threshold: 300.00
+    default-delivery-fee: 35.00
+    
+    # Cancellation rules
+    cancellation-window-minutes: 5
+    
+    # Pagination defaults
+    default-page-size: 20
+    max-page-size: 100
+
+  # Inter-service communication
+  services:
+    restaurant-service:
+      url: http://mhar-restaurant-service
+    payment-service:
+      url: http://mhar-payment-service
+    notification-service:
+      url: http://mhar-notification-service
+
+---
+# Docker Profile
+spring:
+  config:
+    activate:
+      on-profile: docker
+  
+  datasource:
+    url: jdbc:postgresql://postgres:5432/mhar_orders
+    username: mhar_user
+    password: mhar_password
+    
+  redis:
+    host: redis
+    port: 6379
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+---
+# Test Profile
+spring:
+  config:
+    activate:
+      on-profile: test
+  
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  cache:
+    type: simple

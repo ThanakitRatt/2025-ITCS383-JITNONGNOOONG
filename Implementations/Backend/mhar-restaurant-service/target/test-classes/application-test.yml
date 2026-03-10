@@ -1,0 +1,29 @@
+# Test configuration for Restaurant Service
+spring.application.name=mhar-restaurant-service-test
+
+# Test Database Configuration (H2 in-memory)
+spring.datasource.url=jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+
+# JPA Configuration for Tests
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+
+# Disable Redis for tests
+spring.cache.type=simple
+
+# Disable service discovery for tests
+eureka.client.enabled=false
+
+# Test logging configuration
+logging.level.com.itcs383.restaurant=DEBUG
+logging.level.org.springframework.web=DEBUG
+logging.level.sql=DEBUG
+
+# Test server configuration
+server.port=0
+management.endpoints.web.exposure.include=health,info

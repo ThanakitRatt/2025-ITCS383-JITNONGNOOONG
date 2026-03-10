@@ -250,6 +250,7 @@ public class OrderService {
         }
 
         // Update to cancelled status
+        order.setCancellationReason(reason);
         order.updateStatus(OrderStatus.CANCELLED, userId, "Cancelled: " + reason);
         Order cancelledOrder = orderRepository.save(order);
 

@@ -65,6 +65,9 @@ public class Order {
     @Column(name = "special_instructions", columnDefinition = "TEXT")
     private String specialInstructions;
 
+    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    private String cancellationReason;
+
     @Column(name = "estimated_delivery_time")
     private LocalDateTime estimatedDeliveryTime;
 
@@ -182,6 +185,9 @@ public class Order {
 
     public String getSpecialInstructions() { return specialInstructions; }
     public void setSpecialInstructions(String specialInstructions) { this.specialInstructions = specialInstructions; }
+
+    public String getCancellationReason() { return cancellationReason; }
+    public void setCancellationReason(String cancellationReason) { this.cancellationReason = cancellationReason; }
 
     public LocalDateTime getEstimatedDeliveryTime() { return estimatedDeliveryTime; }
     public void setEstimatedDeliveryTime(LocalDateTime estimatedDeliveryTime) { this.estimatedDeliveryTime = estimatedDeliveryTime; }

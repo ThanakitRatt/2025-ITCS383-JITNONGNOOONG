@@ -1,0 +1,150 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: mhar-restaurant-service
+
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mhar_restaurants
+    username: ${DB_USERNAME:thanapornartidtayamontol}
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+    open-in-view: false
+
+  # Redis Configuration for Caching
+  redis:
+    host: localhost
+    port: 6379
+    database: 2
+    timeout: 2000ms
+    jedis:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+  # Cache Configuration
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000  # 10 minutes
+      cache-null-values: false
+
+# Eureka Configuration
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  health:
+    redis:
+      enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    com.itcs383.restaurant: INFO
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: logs/restaurant-service.log
+
+# Custom Application Properties
+app:
+  restaurant:
+    # Image upload
+    max-image-size: 5MB
+    allowed-image-types: jpg,jpeg,png,webp
+    
+    # Business rules
+    max-menu-items-per-restaurant: 200
+    max-categories-per-restaurant: 20
+    default-delivery-radius: 10.0  # km
+    
+    # Cache TTL
+    restaurant-cache-ttl: 600      # 10 minutes
+    menu-cache-ttl: 300           # 5 minutes
+    category-cache-ttl: 1800      # 30 minutes
+
+# Inter-service communication
+  services:
+    order-service:
+      url: http://mhar-order-service
+    auth-service:
+      url: http://mhar-auth-service
+    notification-service:
+      url: http://mhar-notification-service
+
+---
+# Docker Profile
+spring:
+  config:
+    activate:
+      on-profile: docker
+  
+  datasource:
+    url: jdbc:postgresql://postgres:5432/mhar_restaurants
+    username: mhar_user
+    password: mhar_password
+    
+  redis:
+    host: redis
+    port: 6379
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+---
+# Test Profile
+spring:
+  config:
+    activate:
+      on-profile: test
+  
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+    
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  cache:
+    type: simple
