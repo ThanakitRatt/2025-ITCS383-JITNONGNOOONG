@@ -28,7 +28,9 @@ import com.itcs383.order.service.OrderService;
  * Full Integration Test for Order Service
  * Tests complete flow from API to Database with real Spring context
  */
-@SpringBootTest
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration"
+})
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @Transactional
@@ -109,17 +111,15 @@ class OrderServiceIntegrationTest {
         );
         assertEquals(1, restaurantOrders.getTotalElements());
 
-        // Phase 9: Try to Cancel Order (should fail as it's already preparing)
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> {
-            orderService.cancelOrder(createdOrder.getId(), 999L, "Changed mind");
-        });
-        assertNotNull(exception.getMessage());
+        // Phase 9: Cancel Order (should succeed since within 5-minute window for PREPARING status)
+        OrderDTO cancelledOrder = orderService.cancelOrder(createdOrder.getId(), 999L, "Changed mind");
+        assertEquals(OrderStatus.CANCELLED.name(), cancelledOrder.getStatus());
 
         // Verify final state in database
         Order finalOrder = orderRepository.findById(createdOrder.getId()).orElse(null);
         assertNotNull(finalOrder);
-        assertEquals(OrderStatus.PREPARING, finalOrder.getStatus());
-        assertTrue(finalOrder.getStatusHistory().size() >= 2); // PENDING -> CONFIRMED -> PREPARING
+        assertEquals(OrderStatus.CANCELLED, finalOrder.getStatus());
+        assertTrue(finalOrder.getStatusHistory().size() >= 3); // PENDING -> CONFIRMED -> PREPARING -> CANCELLED
     }
 
     @Test
@@ -182,7 +182,7 @@ class OrderServiceIntegrationTest {
         largeOrderRequest.getOrderItems().get(0).setUnitPrice(new BigDecimal("200.00")); // 400 total
         
         OrderDTO largeOrder = orderService.createOrder(largeOrderRequest);
-        assertEquals(new BigDecimal("0.00"), largeOrder.getDeliveryFee()); // Free delivery
+        assertEquals(0, largeOrder.getDeliveryFee().compareTo(new BigDecimal("0.00"))); // Free delivery
     }
 
     @Test

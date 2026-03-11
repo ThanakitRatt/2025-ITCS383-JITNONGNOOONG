@@ -53,10 +53,12 @@ public class OrderController {
     // Constants for response keys
     private static final String KEY_SUCCESS = "success";
     private static final String KEY_MESSAGE = "message";
+    private static final String KEY_ERROR = "error";
     private static final String KEY_DATA = "data";
     
     // Constants for log messages
     private static final String LOG_ORDER_NOT_FOUND = "Order not found: {}";
+    private static final String MSG_ORDER_NOT_FOUND_ID = "Order not found with ID: ";
     private static final String MSG_ORDER_CREATED = "Order created successfully";
     private static final String MSG_ORDER_UPDATED = "Order status updated successfully";
     private static final String MSG_ORDER_CANCELLED = "Order cancelled successfully";
@@ -104,7 +106,7 @@ public class OrderController {
             logger.error("Failed to create order: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 KEY_SUCCESS, false,
-                KEY_MESSAGE, MSG_FAILED_CREATE
+                KEY_ERROR, MSG_FAILED_CREATE
             ));
         }
     }
@@ -127,13 +129,16 @@ public class OrderController {
             
         } catch (RuntimeException e) {
             logger.warn(LOG_ORDER_NOT_FOUND, id);
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                KEY_SUCCESS, false,
+                KEY_ERROR, MSG_ORDER_NOT_FOUND_ID + id
+            ));
             
         } catch (Exception e) {
             logger.error("Failed to fetch order {}: {}", id, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 KEY_SUCCESS, false,
-                KEY_MESSAGE, MSG_FAILED_FETCH
+                KEY_ERROR, MSG_FAILED_FETCH
             ));
         }
     }
@@ -190,27 +195,30 @@ public class OrderController {
             logger.warn("Invalid status transition for order {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
                 KEY_SUCCESS, false,
-                KEY_MESSAGE, e.getMessage()
+                KEY_ERROR, e.getMessage()
             ));
             
         } catch (RuntimeException e) {
             logger.warn(LOG_ORDER_NOT_FOUND, id);
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                KEY_SUCCESS, false,
+                KEY_ERROR, MSG_ORDER_NOT_FOUND_ID + id
+            ));
             
         } catch (Exception e) {
             logger.error("Failed to update order {} status: {}", id, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 KEY_SUCCESS, false,
-                KEY_MESSAGE, MSG_FAILED_UPDATE
+                KEY_ERROR, MSG_FAILED_UPDATE
             ));
         }
     }
 
     /**
      * Cancel order
-     * DELETE /orders/{id}
+     * PUT /orders/{id}/cancel
      */
-    @DeleteMapping("/{id}")
+    @PutMapping("/{id}/cancel")
     public ResponseEntity<Map<String, Object>> cancelOrder(@PathVariable Long id,
                                         @RequestParam Long userId,
                                         @RequestParam(required = false, defaultValue = "Cancelled by user") String reason) {
@@ -234,15 +242,29 @@ public class OrderController {
             
         } catch (RuntimeException e) {
             logger.warn(LOG_ORDER_NOT_FOUND, id);
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                KEY_SUCCESS, false,
+                KEY_ERROR, MSG_ORDER_NOT_FOUND_ID + id
+            ));
             
         } catch (Exception e) {
             logger.error("Failed to cancel order {}: {}", id, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 KEY_SUCCESS, false,
-                KEY_MESSAGE, MSG_FAILED_CANCEL
+                KEY_ERROR, MSG_FAILED_CANCEL
             ));
         }
+    }
+
+    /**
+     * Cancel order (DELETE version for backwards compatibility)
+     * DELETE /orders/{id}
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> cancelOrderDelete(@PathVariable Long id,
+                                        @RequestParam Long userId,
+                                        @RequestParam(required = false, defaultValue = "Cancelled by user") String reason) {
+        return cancelOrder(id, userId, reason);
     }
 
     /**
@@ -270,8 +292,8 @@ public class OrderController {
             
             return ResponseEntity.ok(Map.of(
                 KEY_SUCCESS, true,
-                KEY_DATA, orders.getContent(),
-                "pagination", Map.of(
+                KEY_DATA, Map.of(
+                    "content", orders.getContent(),
                     "page", orders.getNumber(),
                     "size", orders.getSize(),
                     "totalElements", orders.getTotalElements(),
@@ -322,8 +344,8 @@ public class OrderController {
             
             return ResponseEntity.ok(Map.of(
                 KEY_SUCCESS, true,
-                KEY_DATA, orders.getContent(),
-                "pagination", Map.of(
+                KEY_DATA, Map.of(
+                    "content", orders.getContent(),
                     "page", orders.getNumber(),
                     "size", orders.getSize(),
                     "totalElements", orders.getTotalElements(),

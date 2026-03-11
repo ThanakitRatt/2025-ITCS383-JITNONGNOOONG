@@ -2,6 +2,7 @@ package com.itcs383.order.config;
 
 import java.time.Duration;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -15,9 +16,11 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 /**
  * Cache Configuration for Order Service
  * Configures Redis caching for improved performance with 10M users
+ * Only enabled when RedisConnectionFactory bean is available
  */
 @Configuration
 @EnableCaching
+@ConditionalOnBean(RedisConnectionFactory.class)
 public class CacheConfig {
 
     @Bean

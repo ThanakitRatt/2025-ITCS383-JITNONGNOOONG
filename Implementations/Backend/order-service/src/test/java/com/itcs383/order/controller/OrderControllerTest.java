@@ -204,7 +204,8 @@ class OrderControllerTest {
             .thenReturn(orderPage);
 
         // When & Then
-        mockMvc.perform(get("/orders/customer/{customerId}/status/{status}", customerId, status)
+        mockMvc.perform(get("/orders/customer/{customerId}", customerId)
+                .param("status", "PENDING")
                 .param("page", "0")
                 .param("size", "10"))
                 .andExpect(status().isOk())
@@ -256,7 +257,7 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value(OrderStatus.CANCELLED.name()));
 
-        verify(orderService).cancelOrder(eq(orderId), eq(2L), eq("Customer requested"));
+        verify(orderService).cancelOrder(orderId, 2L, "Customer requested");
     }
 
     @Test
