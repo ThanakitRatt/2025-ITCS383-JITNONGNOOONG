@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react';
 
 export type UserRole = 'customer' | 'restaurant' | 'rider' | 'admin' | null;
 
@@ -66,9 +66,43 @@ export const useApp = () => {
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const id = localStorage.getItem('userId');
+    const role = localStorage.getItem('userRole');
+    const name = localStorage.getItem('userName');
+    const email = localStorage.getItem('userEmail');
+    if (id && role && name && email) {
+      return { id, role: role.toLowerCase() as UserRole, name, email };
+    }
+    return null;
+  });
+
+  const persistUser = (u: User | null) => {
+    if (u) {
+      localStorage.setItem('userId', u.id);
+      localStorage.setItem('userRole', u.role ?? '');
+      localStorage.setItem('userName', u.name);
+      localStorage.setItem('userEmail', u.email);
+    } else {
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('refreshToken');
+    }
+    setUser(u);
+  };
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>([
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const stored = localStorage.getItem('app_orders');
+    if (stored) {
+      try {
+        const parsed: Order[] = JSON.parse(stored);
+        return parsed.map(o => ({ ...o, createdAt: new Date(o.createdAt) }));
+      } catch { /* fall through to initial data */ }
+    }
+    return [
     // Mock existing orders
     {
       id: 'ORD001',
@@ -76,7 +110,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       customerName: 'John Doe',
       restaurantId: 'REST001',
       restaurantName: 'Bangkok Street Food',
-      riderId: 'RIDER001',
+      riderId: '200',
       riderName: 'Mike Chen',
       items: [
         { id: 'ITEM001', name: 'Pad Thai', price: 120, quantity: 2, restaurantId: 'REST001', restaurantName: 'Bangkok Street Food' }
@@ -102,7 +136,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       deliveryAddress: '456 Silom Road, Bangkok',
       paymentMethod: 'qr-code'
     }
-  ]);
+  ];
+  });
 
   const addToCart = (item: CartItem) => {
     setCart(prev => {
@@ -137,34 +172,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addOrder = (order: Order) => {
-    setOrders(prev => [order, ...prev]);
+    setOrders(prev => {
+      const next = [order, ...prev];
+      localStorage.setItem('app_orders', JSON.stringify(next));
+      return next;
+    });
   };
 
   const updateOrder = (orderId: string, updates: Partial<Order>) => {
-    setOrders(prev => prev.map(order => 
-      order.id === orderId ? { ...order, ...updates } : order
-    ));
+    setOrders(prev => {
+      const next = prev.map(order =>
+        order.id === orderId ? { ...order, ...updates } : order
+      );
+      localStorage.setItem('app_orders', JSON.stringify(next));
+      return next;
+    });
   };
 
   const logout = () => {
-    setUser(null);
+    persistUser(null);
     setCart([]);
   };
 
+  const contextValue = useMemo(() => ({
+    user,
+    setUser: persistUser,
+    cart,
+    addToCart,
+    removeFromCart,
+    updateCartQuantity,
+    clearCart,
+    orders,
+    addOrder,
+    updateOrder,
+    logout
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [user, cart, orders]);
+
   return (
-    <AppContext.Provider value={{
-      user,
-      setUser,
-      cart,
-      addToCart,
-      removeFromCart,
-      updateCartQuantity,
-      clearCart,
-      orders,
-      addOrder,
-      updateOrder,
-      logout
-    }}>
+    <AppContext.Provider value={contextValue}>
       {children}
     </AppContext.Provider>
   );

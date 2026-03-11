@@ -54,6 +54,7 @@ public class CreateMenuItemRequest {
     private Integer displayOrder = 0;
 
     // Constructors
+    @SuppressWarnings("java:S1186") // No-arg constructor required by Jackson for JSON deserialization
     public CreateMenuItemRequest() {}
 
     // Getters and Setters

@@ -61,7 +61,7 @@ apiClient.interceptors.request.use(
   },
   (error: AxiosError) => {
     console.error('[API Request Error]', error);
-    return Promise.reject(error);
+    throw error;
   }
 );
 
@@ -121,7 +121,7 @@ apiClient.interceptors.response.use(
         // Refresh failed - logout user
         localStorage.clear();
         window.location.href = '/login';
-        return Promise.reject(refreshError);
+        throw refreshError;
       }
     }
     
@@ -146,7 +146,7 @@ apiClient.interceptors.response.use(
       console.error('Network error - please check your connection');
     }
     
-    return Promise.reject(error);
+    throw error;
   }
 );
 

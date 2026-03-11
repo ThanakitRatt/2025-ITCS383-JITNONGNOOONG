@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
@@ -31,6 +32,24 @@ export default defineConfig({
         secure: false,
         ws: true, // WebSocket support
       },
+    },
+  },
+
+  // Test configuration (vitest)
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test-setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['lcov', 'text'],
+      reportsDirectory: './coverage',
+      exclude: [
+        '**/*.test.ts',
+        '**/*.test.tsx',
+        '**/test-setup.ts',
+        'node_modules/**',
+      ],
     },
   },
 

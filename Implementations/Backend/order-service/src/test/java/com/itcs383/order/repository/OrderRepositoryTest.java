@@ -29,6 +29,7 @@ import com.itcs383.order.entity.OrderItem;
  */
 @DataJpaTest
 @ActiveProfiles("test")
+@SuppressWarnings("null")
 class OrderRepositoryTest {
 
     @Autowired

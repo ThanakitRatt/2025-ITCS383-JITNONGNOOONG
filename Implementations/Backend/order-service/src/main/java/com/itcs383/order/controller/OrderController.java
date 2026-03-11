@@ -11,7 +11,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,7 +44,6 @@ import jakarta.validation.Valid;
  */
 @RestController
 @RequestMapping("/orders")
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class OrderController {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
@@ -367,6 +365,26 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 KEY_SUCCESS, false,
                 KEY_MESSAGE, MSG_FAILED_FETCH_ORDERS
+            ));
+        }
+    }
+
+    /**
+     * Admin statistics endpoint
+     * GET /orders/admin/stats
+     */
+    @GetMapping("/admin/stats")
+    public ResponseEntity<Map<String, Object>> getAdminStats() {
+        try {
+            return ResponseEntity.ok(Map.of(
+                KEY_SUCCESS, true,
+                KEY_DATA, orderService.getAdminStats()
+            ));
+        } catch (Exception e) {
+            logger.error("Failed to fetch admin stats: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                KEY_SUCCESS, false,
+                KEY_ERROR, "Failed to fetch admin stats"
             ));
         }
     }

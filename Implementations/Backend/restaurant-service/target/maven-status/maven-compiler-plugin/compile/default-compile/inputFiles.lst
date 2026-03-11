@@ -1,9 +1,12 @@
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/RestaurantServiceApplication.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/config/CacheConfig.java
+/Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/config/JpaConfig.java
+/Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/controller/AuthController.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/controller/RestaurantController.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/dto/CreateMenuCategoryRequest.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/dto/CreateMenuItemRequest.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/dto/CreateRestaurantRequest.java
+/Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/dto/UpdateMenuItemRequest.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/entity/MenuCategory.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/entity/MenuItem.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/entity/Restaurant.java

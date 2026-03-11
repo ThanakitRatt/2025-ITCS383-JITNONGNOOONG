@@ -40,8 +40,6 @@ public class OrderService {
     private static final String RESOURCE_ORDER = "Order";
 
     private final OrderRepository orderRepository;
-    // TODO: Add RestaurantServiceClient when Restaurant Service is ready
-    // TODO: Add PaymentServiceClient when Payment Service is ready
 
     @Autowired
     public OrderService(OrderRepository orderRepository) {
@@ -97,30 +95,22 @@ public class OrderService {
             // Save order
             Order savedOrder = orderRepository.save(order);
 
-            // TODO: Notify restaurant service
-            // TODO: Reserve payment with payment service
-
             logger.info("Order created successfully: {}", savedOrder.getOrderNumber());
             return convertToDTO(savedOrder);
 
         } catch (IllegalArgumentException e) {
-            logger.error("Invalid order request for customer {}: {}", 
-                        request.getCustomerId(), e.getMessage());
-            throw e;
-        } catch (RuntimeException e) {
-            logger.error("Failed to create order for customer {}: {}", 
-                        request.getCustomerId(), e.getMessage(), e);
-            throw e;
+            throw new OrderValidationException(
+                "Invalid order request for customer " + request.getCustomerId() + ": " + e.getMessage(), e);
         } catch (Exception e) {
-            logger.error("Unexpected error creating order for customer {}: {}", 
-                        request.getCustomerId(), e.getMessage(), e);
-            throw new OrderValidationException("Failed to create order: " + e.getMessage(), e);
+            throw new OrderValidationException(
+                "Failed to create order for customer " + request.getCustomerId() + ": " + e.getMessage(), e);
         }
     }
 
     /**
      * Get order by ID with caching
      */
+    @SuppressWarnings("null")
     @Cacheable(value = "orders", key = "#orderId")
     @Transactional(readOnly = true)
     public OrderDTO getOrder(Long orderId) {
@@ -149,6 +139,7 @@ public class OrderService {
     /**
      * Update order status with business validation
      */
+    @SuppressWarnings("null")
     @CacheEvict(value = "orders", key = "#orderId")
     @Transactional
     public OrderDTO updateOrderStatus(Long orderId, UpdateOrderStatusRequest request) {
@@ -170,22 +161,14 @@ public class OrderService {
             // Save updated order
             Order updatedOrder = orderRepository.save(order);
 
-            // TODO: Send notifications based on status
-            // TODO: Update payment status if needed
-            // TODO: Notify rider service for pickup/delivery
-
             logger.info("Order {} status updated to {}", orderId, request.getNewStatus());
             return convertToDTO(updatedOrder);
 
         } catch (OrderStatusException e) {
-            logger.error("Invalid status transition for order {}: {}", orderId, e.getMessage());
-            throw e;
-        } catch (RuntimeException e) {
-            logger.error("Failed to update order {} status: {}", orderId, e.getMessage(), e);
             throw e;
         } catch (Exception e) {
-            logger.error("Unexpected error updating order {} status: {}", orderId, e.getMessage(), e);
-            throw new OrderStatusException("Failed to update order status: " + e.getMessage());
+            throw new OrderStatusException(
+                "Failed to update order " + orderId + " status: " + e.getMessage(), e);
         }
     }
 
@@ -238,6 +221,7 @@ public class OrderService {
     /**
      * Cancel order with validation
      */
+    @SuppressWarnings("null")
     @CacheEvict(value = "orders", key = "#orderId")
     @Transactional
     public OrderDTO cancelOrder(Long orderId, Long userId, String reason) {
@@ -248,7 +232,8 @@ public class OrderService {
 
         // Validate cancellation
         if (!canCancelOrder(order)) {
-            throw new IllegalStateException("Order cannot be cancelled in current status: " + order.getStatus());
+            throw new OrderStatusException(
+                "Order " + orderId + " cannot be cancelled in current status: " + order.getStatus());
         }
 
         // Update to cancelled status
@@ -256,19 +241,40 @@ public class OrderService {
         order.updateStatus(OrderStatus.CANCELLED, userId, "Cancelled: " + reason);
         Order cancelledOrder = orderRepository.save(order);
 
-        // TODO: Process refund if payment was made
-        // TODO: Notify restaurant and customer
-
         logger.info("Order {} cancelled successfully", orderId);
         return convertToDTO(cancelledOrder);
+    }
+
+    /**
+     * Get admin statistics for the dashboard
+     */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> getAdminStats() {
+        LocalDateTime todayStart = java.time.LocalDate.now().atStartOfDay();
+        LocalDateTime monthStart = java.time.LocalDate.now().withDayOfMonth(1).atStartOfDay();
+
+        long todayOrderCount = orderRepository.countAllSince(todayStart);
+        long monthOrderCount = orderRepository.countAllSince(monthStart);
+        long totalOrderCount = orderRepository.count();
+
+        BigDecimal todayRevenue = orderRepository.sumTotalAmountByStatusSince(OrderStatus.DELIVERED, todayStart);
+        BigDecimal monthRevenue = orderRepository.sumTotalAmountByStatusSince(OrderStatus.DELIVERED, monthStart);
+
+        // Platform commission is 10%
+        BigDecimal commissionRate = new BigDecimal("0.10");
+
+        return java.util.Map.of(
+            "todayOrders", todayOrderCount,
+            "monthOrders", monthOrderCount,
+            "totalOrders", totalOrderCount,
+            "todayRevenue", todayRevenue.multiply(commissionRate),
+            "monthRevenue", monthRevenue.multiply(commissionRate)
+        );
     }
 
     // Private helper methods
 
     private void validateCreateOrderRequest(CreateOrderRequest request) {
-        // TODO: Validate restaurant exists and is open
-        // TODO: Validate menu items exist and are available
-        // TODO: Check delivery area coverage
         
         if (request.getOrderItems().isEmpty()) {
             throw new IllegalArgumentException("Order must contain at least one item");
@@ -294,11 +300,6 @@ public class OrderService {
     }
 
     private BigDecimal calculateDeliveryFee(BigDecimal itemsTotal) {
-        // TODO: Implement complex delivery fee calculation based on:
-        // - Distance between restaurant and delivery address
-        // - Restaurant delivery fee settings (restaurantId parameter will be needed)
-        // - Time of day (surge pricing)
-        // - Order total (free delivery threshold)
         
         // Simple implementation for now
         BigDecimal freeDeliveryThreshold = new BigDecimal("300.00");

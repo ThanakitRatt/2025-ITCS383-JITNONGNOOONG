@@ -7,7 +7,7 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Badge } from '../../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { ArrowLeft, Plus, Trash2, Tag } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Tag, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Promotion {
@@ -22,16 +22,8 @@ interface Promotion {
 export default function RestaurantPromotions() {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [promotions, setPromotions] = useState<Promotion[]>([
-    {
-      id: 'PROMO001',
-      title: 'Weekend Special',
-      description: 'Get 20% off on all orders this weekend',
-      discountPercent: 20,
-      validUntil: '2026-03-08',
-      active: true
-    }
-  ]);
+  const [loading, setLoading] = useState(false);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -40,34 +32,53 @@ export default function RestaurantPromotions() {
     validUntil: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
-    const newPromo: Promotion = {
-      id: `PROMO${Date.now()}`,
-      title: formData.title,
-      description: formData.description,
-      discountPercent: parseFloat(formData.discountPercent),
-      validUntil: formData.validUntil,
-      active: true
-    };
-    
-    setPromotions([...promotions, newPromo]);
-    setFormData({ title: '', description: '', discountPercent: '', validUntil: '' });
-    setIsDialogOpen(false);
-    toast.success('Promotion created successfully');
+    // NOTE: Promotions service not yet implemented in backend.
+    // This creates a local state entry until backend promotion endpoint is available.
+    try {
+      const newPromo: Promotion = {
+        id: `PROMO${Date.now()}`,
+        title: formData.title,
+        description: formData.description,
+        discountPercent: parseFloat(formData.discountPercent),
+        validUntil: formData.validUntil,
+        active: true
+      };
+      
+      setPromotions([...promotions, newPromo]);
+      setFormData({ title: '', description: '', discountPercent: '', validUntil: '' });
+      setIsDialogOpen(false);
+      toast.success('Promotion created successfully');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to create promotion');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setPromotions(promotions.filter(p => p.id !== id));
-    toast.success('Promotion deleted');
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this promotion?')) return;
+    
+    try {
+      setPromotions(promotions.filter(p => p.id !== id));
+      toast.success('Promotion deleted');
+    } catch (error) {
+      toast.error('Failed to delete promotion');
+    }
   };
 
-  const toggleActive = (id: string) => {
-    setPromotions(promotions.map(p => 
-      p.id === id ? { ...p, active: !p.active } : p
-    ));
-    toast.success('Promotion status updated');
+  const toggleActive = async (id: string) => {
+    try {
+      setPromotions(promotions.map(p => 
+        p.id === id ? { ...p, active: !p.active } : p
+      ));
+      toast.success('Promotion status updated');
+    } catch (error) {
+      toast.error('Failed to update promotion status');
+    }
   };
 
   return (

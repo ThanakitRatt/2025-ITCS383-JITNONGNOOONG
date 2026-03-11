@@ -21,6 +21,7 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 @Configuration
 @EnableCaching
 @ConditionalOnBean(RedisConnectionFactory.class)
+@SuppressWarnings("null")
 public class CacheConfig {
 
     @Bean

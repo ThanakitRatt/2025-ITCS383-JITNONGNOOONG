@@ -112,7 +112,7 @@ export default function CustomerRegistration() {
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Required for OTP authentication
+                    Required for account verification and order updates
                   </p>
                 </div>
                 <div>

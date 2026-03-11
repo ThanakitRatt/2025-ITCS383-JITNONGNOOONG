@@ -12,6 +12,7 @@ import RestaurantDashboard from "./pages/restaurant/RestaurantDashboard";
 import RestaurantOrders from "./pages/restaurant/RestaurantOrders";
 import MenuManagement from "./pages/restaurant/MenuManagement";
 import RestaurantPromotions from "./pages/restaurant/RestaurantPromotions";
+import RestaurantCategories from "./pages/restaurant/RestaurantCategories";
 import RiderDashboard from "./pages/rider/RiderDashboard";
 import RiderDelivery from "./pages/rider/RiderDelivery";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -40,6 +41,7 @@ export const router = createHashRouter([
       { path: "restaurant/orders", Component: RestaurantOrders },
       { path: "restaurant/menu", Component: MenuManagement },
       { path: "restaurant/promotions", Component: RestaurantPromotions },
+      { path: "restaurant/categories", Component: RestaurantCategories },
 
       // Rider Routes
       { path: "rider/dashboard", Component: RiderDashboard },

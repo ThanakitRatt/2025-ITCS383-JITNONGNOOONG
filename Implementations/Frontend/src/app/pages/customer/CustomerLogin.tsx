@@ -17,11 +17,11 @@ export default function CustomerLogin() {
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     // Simulate login - move to OTP step
     setStep('otp');
-    toast.success('OTP sent to your mobile number');
+    toast.success('OTP sent to your email');
   };
 
   const handleVerifyOTP = () => {
@@ -57,7 +57,7 @@ export default function CustomerLogin() {
           <CardDescription>
             {step === 'credentials' 
               ? 'Enter your credentials to continue' 
-              : 'Enter the OTP sent to your mobile'}
+              : 'Enter the OTP sent to your email'}
           </CardDescription>
         </CardHeader>
         <CardContent>

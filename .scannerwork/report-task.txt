@@ -1,0 +1,6 @@
+projectKey=MharRuengSang
+serverUrl=http://localhost:9000
+serverVersion=26.2.0.119303
+dashboardUrl=http://localhost:9000/dashboard?id=MharRuengSang
+ceTaskId=08519cd0-474f-4ed5-9ed3-1aee7b0d5bcb
+ceTaskUrl=http://localhost:9000/api/ce/task?id=08519cd0-474f-4ed5-9ed3-1aee7b0d5bcb

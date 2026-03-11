@@ -23,31 +23,43 @@ export default function AdminAccounts() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   
-  const [customers, setCustomers] = useState<Customer[]>([
+  const defaultCustomers: Customer[] = [
     { id: 'CUST001', name: 'John Doe', email: 'john@example.com', phone: '+66 81 234 5678', totalOrders: 24, active: true },
     { id: 'CUST002', name: 'Sarah Wilson', email: 'sarah@example.com', phone: '+66 82 345 6789', totalOrders: 15, active: true },
     { id: 'CUST003', name: 'Michael Brown', email: 'michael@example.com', phone: '+66 83 456 7890', totalOrders: 8, active: false }
-  ]);
+  ];
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try { const s = localStorage.getItem('admin_customers'); return s ? JSON.parse(s) : defaultCustomers; } catch { return defaultCustomers; }
+  });
 
-  const [restaurantList, setRestaurantList] = useState(
-    restaurants.map(r => ({ ...r, status: r.isActive ? 'active' : 'suspended' }))
-  );
+  const defaultRestaurants = restaurants.map(r => ({ ...r, status: r.isActive ? 'active' : 'suspended' }));
+  const [restaurantList, setRestaurantList] = useState(() => {
+    try { const s = localStorage.getItem('admin_restaurants'); return s ? JSON.parse(s) : defaultRestaurants; } catch { return defaultRestaurants; }
+  });
+
+  const updateCustomers = (next: Customer[]) => {
+    localStorage.setItem('admin_customers', JSON.stringify(next));
+    setCustomers(next);
+  };
 
   const handleToggleCustomer = (customerId: string) => {
-    setCustomers(customers.map(c => 
-      c.id === customerId ? { ...c, active: !c.active } : c
-    ));
+    updateCustomers(customers.map(c => c.id === customerId ? { ...c, active: !c.active } : c));
     toast.success('Customer status updated');
   };
 
   const handleDeleteCustomer = (customerId: string) => {
-    setCustomers(customers.filter(c => c.id !== customerId));
+    updateCustomers(customers.filter(c => c.id !== customerId));
     toast.success('Customer account deleted');
   };
 
+  const updateRestaurants = (next: typeof restaurantList) => {
+    localStorage.setItem('admin_restaurants', JSON.stringify(next));
+    setRestaurantList(next);
+  };
+
   const handleToggleRestaurant = (restaurantId: string) => {
-    setRestaurantList(restaurantList.map(r => 
-      r.id === restaurantId 
+    updateRestaurants(restaurantList.map(r =>
+      r.id === restaurantId
         ? { ...r, status: r.status === 'active' ? 'suspended' : 'active', isActive: r.status !== 'active' }
         : r
     ));
@@ -55,7 +67,7 @@ export default function AdminAccounts() {
   };
 
   const handleDeleteRestaurant = (restaurantId: string) => {
-    setRestaurantList(restaurantList.filter(r => r.id !== restaurantId));
+    updateRestaurants(restaurantList.filter(r => r.id !== restaurantId));
     toast.success('Restaurant account deleted');
   };
 

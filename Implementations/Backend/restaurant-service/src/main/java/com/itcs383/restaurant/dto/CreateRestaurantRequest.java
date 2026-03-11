@@ -81,7 +81,9 @@ public class CreateRestaurantRequest {
     private String coverImageUrl;
 
     // Constructors
-    public CreateRestaurantRequest() {}
+    public CreateRestaurantRequest() {
+        // No-arg constructor required by Jackson for JSON deserialization
+    }
 
     // Getters and Setters
     public String getName() { return name; }

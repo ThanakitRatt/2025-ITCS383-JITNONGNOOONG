@@ -7,20 +7,22 @@ import { Label } from '../../components/ui/label';
 import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { Separator } from '../../components/ui/separator';
 import { useApp } from '../../contexts/AppContext';
-import { ArrowLeft, Trash2, Plus, Minus, CreditCard, QrCode } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Minus, CreditCard, QrCode, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import orderService, { CreateOrderRequest } from '../../services/order.service';
 
 export default function Checkout() {
   const navigate = useNavigate();
-  const { cart, updateCartQuantity, removeFromCart, clearCart, addOrder, user } = useApp();
+  const { cart, updateCartQuantity, removeFromCart, clearCart, user } = useApp();
   const [paymentMethod, setPaymentMethod] = useState<'credit-card' | 'qr-code'>('credit-card');
-  const [deliveryAddress, setDeliveryAddress] = useState('123 Sukhumvit Road, Bangkok');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [placing, setPlacing] = useState(false);
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const commission = subtotal * 0.1; // 10% commission
+  const commission = subtotal * 0.1; // 10% platform fee
   const total = subtotal + commission;
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (cart.length === 0) {
       toast.error('Your cart is empty');
       return;
@@ -31,28 +33,33 @@ export default function Checkout() {
       return;
     }
 
-    // Group items by restaurant (for demo, we'll just create one order)
     const restaurantId = cart[0].restaurantId;
-    const restaurantName = cart[0].restaurantName;
 
-    const order = {
-      id: `ORD${Date.now()}`,
-      customerId: user?.id || 'GUEST',
-      customerName: user?.name || 'Guest',
+    const orderData: CreateOrderRequest = {
+      customerId: user?.id?.toString() || '',
       restaurantId,
-      restaurantName,
-      items: [...cart],
-      total,
-      status: 'pending' as const,
-      createdAt: new Date(),
-      deliveryAddress,
-      paymentMethod
+      deliveryAddress: deliveryAddress.trim(),
+      deliveryLatitude: 13.7563,
+      deliveryLongitude: 100.5018,
+      orderItems: cart.map(item => ({
+        menuItemId: item.id,
+        menuItemName: item.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+      })),
     };
 
-    addOrder(order);
-    clearCart();
-    toast.success('Order placed successfully!');
-    navigate('/customer/orders');
+    setPlacing(true);
+    try {
+      await orderService.createOrder(orderData);
+      clearCart();
+      toast.success('Order placed successfully!');
+      navigate('/customer/orders');
+    } catch {
+      toast.error('Failed to place order. Please try again.');
+    } finally {
+      setPlacing(false);
+    }
   };
 
   return (
@@ -205,9 +212,11 @@ export default function Checkout() {
                 <Button 
                   className="w-full" 
                   onClick={handlePlaceOrder}
-                  disabled={cart.length === 0}
+                  disabled={cart.length === 0 || placing}
                 >
-                  Place Order
+                  {placing ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Placing Order...</>
+                  ) : 'Place Order'}
                 </Button>
                 <p className="text-xs text-gray-500 text-center">
                   By placing an order, you agree to our terms and conditions

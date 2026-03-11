@@ -1752,10 +1752,10 @@ Apache Maven 3.9.11 ✓
 **Change History:**
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2026-02-05 | [Name] | Initial AI usage log created - Architecture design |
+| 1.0 | 2026-02-05 | Sahatsawat Nitjaphant | Initial AI usage log created - Architecture design |
 | 1.1 | 2026-02-28 | [Name] | Added Entry #2 - Web frontend implementation with React/Vite |
-| 1.2 | 2026-03-11 | [Name] | Added Entry #3 - Backend microservices bug fixing and environment setup |
-| 1.3 | 2026-03-11 | [Name] | Added Entry #4 - Test suite fixes and code quality improvements |
+| 1.2 | 2026-03-11 | Sahatsawat Nitjaphant | Added Entry #3 - Backend microservices bug fixing and environment setup |
+| 1.3 | 2026-03-11 | Sahatsawat Nitjaphant | Added Entry #4 - Test suite fixes and code quality improvements |
 
 ---
 

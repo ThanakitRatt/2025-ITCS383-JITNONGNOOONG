@@ -1,5 +1,8 @@
+com/itcs383/restaurant/config/JpaConfig.class
 com/itcs383/restaurant/entity/MenuItem.class
+com/itcs383/restaurant/dto/UpdateMenuItemRequest.class
 com/itcs383/restaurant/controller/RestaurantController.class
+com/itcs383/restaurant/controller/AuthController.class
 com/itcs383/restaurant/dto/CreateRestaurantRequest.class
 com/itcs383/restaurant/config/CacheConfig.class
 com/itcs383/restaurant/dto/CreateMenuItemRequest$Builder.class

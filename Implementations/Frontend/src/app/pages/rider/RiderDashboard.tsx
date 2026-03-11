@@ -8,9 +8,9 @@ import { toast } from 'sonner';
 
 export default function RiderDashboard() {
   const navigate = useNavigate();
-  const { orders, updateOrder } = useApp();
+  const { orders, updateOrder, user, logout } = useApp();
 
-  const riderId = 'RIDER001';
+  const riderId = user?.id ?? 'RIDER001';
   const myDeliveries = orders.filter(o => o.riderId === riderId);
   const activeDelivery = myDeliveries.find(o => o.status === 'delivering');
   
@@ -29,6 +29,11 @@ export default function RiderDashboard() {
     o.status === 'completed' && 
     o.createdAt.toDateString() === new Date().toDateString()
   ).length;
+
+  const handleExit = () => {
+    logout();
+    navigate('/login');
+  };
 
   const handleAcceptOrder = (orderId: string) => {
     updateOrder(orderId, {
@@ -50,7 +55,7 @@ export default function RiderDashboard() {
               <h1 className="text-2xl">🚴 Rider Portal</h1>
               <p className="text-sm text-gray-500">Mike Chen</p>
             </div>
-            <Button variant="ghost" onClick={() => navigate('/login')}>
+            <Button variant="ghost" onClick={handleExit}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Exit
             </Button>

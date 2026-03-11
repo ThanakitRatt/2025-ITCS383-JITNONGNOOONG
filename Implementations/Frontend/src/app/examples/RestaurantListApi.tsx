@@ -208,9 +208,9 @@ export default function RestaurantListApi() {
               key={restaurant.id}
               className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
             >
-              {restaurant.imageUrl && (
+              {(restaurant.coverImageUrl ?? restaurant.logoUrl) && (
                 <img
-                  src={restaurant.imageUrl}
+                  src={restaurant.coverImageUrl ?? restaurant.logoUrl}
                   alt={restaurant.name}
                   className="w-full h-48 object-cover"
                 />

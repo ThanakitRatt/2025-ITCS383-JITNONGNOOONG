@@ -1,9 +1,12 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useApp } from '../../contexts/AppContext';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { adminStats } from '../../data/mockData';
 import { ArrowLeft, DollarSign, Users, Store, Bike, ShoppingCart, TrendingUp } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { getAdminStats, type AdminStats } from '../../services/admin.service';
 
 const revenueData = [
   { day: 'Mon', revenue: 45000 },
@@ -17,11 +20,29 @@ const revenueData = [
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const { logout } = useApp();
+  const [liveStats, setLiveStats] = useState<AdminStats | null>(null);
+
+  useEffect(() => {
+    getAdminStats()
+      .then(setLiveStats)
+      .catch(() => { /* backend unavailable — fall back to mock values */ });
+  }, []);
+
+  const handleExit = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const todayRevenue = liveStats?.orders.todayRevenue ?? adminStats.dailyRevenue;
+  const monthRevenue = liveStats?.orders.monthRevenue ?? adminStats.monthlyRevenue;
+  const todayOrderCount = liveStats?.orders.todayOrders ?? adminStats.todayOrders;
+  const activeRestaurantCount = liveStats?.restaurants.activeRestaurants ?? adminStats.activeRestaurants;
 
   const stats = [
     {
       title: 'Daily Revenue',
-      value: `฿${adminStats.dailyRevenue.toLocaleString()}`,
+      value: `฿${todayRevenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
       icon: DollarSign,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
@@ -29,7 +50,7 @@ export default function AdminDashboard() {
     },
     {
       title: 'Monthly Revenue',
-      value: `฿${(adminStats.monthlyRevenue / 1000).toFixed(1)}K`,
+      value: `฿${(monthRevenue / 1000).toFixed(1)}K`,
       icon: TrendingUp,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
@@ -44,7 +65,7 @@ export default function AdminDashboard() {
     },
     {
       title: 'Active Restaurants',
-      value: adminStats.activeRestaurants,
+      value: activeRestaurantCount,
       icon: Store,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50'
@@ -58,7 +79,7 @@ export default function AdminDashboard() {
     },
     {
       title: "Today's Orders",
-      value: adminStats.todayOrders,
+      value: todayOrderCount,
       icon: ShoppingCart,
       color: 'text-pink-600',
       bgColor: 'bg-pink-50'
@@ -75,7 +96,7 @@ export default function AdminDashboard() {
               <h1 className="text-2xl">🛡️ Admin Dashboard</h1>
               <p className="text-sm text-gray-500">FoodExpress Platform Management</p>
             </div>
-            <Button variant="ghost" onClick={() => navigate('/login')}>
+            <Button variant="ghost" onClick={handleExit}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Exit
             </Button>

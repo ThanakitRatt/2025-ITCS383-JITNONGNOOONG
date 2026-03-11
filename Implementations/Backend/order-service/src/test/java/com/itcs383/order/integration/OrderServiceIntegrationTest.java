@@ -33,6 +33,7 @@ import com.itcs383.order.service.OrderService;
 })
 @ActiveProfiles("test")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@SuppressWarnings("null")
 @Transactional
 class OrderServiceIntegrationTest {
 

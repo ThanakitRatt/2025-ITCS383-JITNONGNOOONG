@@ -23,7 +23,9 @@ public class CreateMenuCategoryRequest {
     private Boolean isActive = true;
 
     // Constructors
-    public CreateMenuCategoryRequest() {}
+    public CreateMenuCategoryRequest() {
+        // No-arg constructor required by Jackson for JSON deserialization
+    }
 
     // Getters and Setters
     public String getName() { return name; }

@@ -40,6 +40,7 @@ import com.itcs383.order.repository.OrderRepository;
  * Tests all business logic, validation, and edge cases
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("null")
 class OrderServiceTest {
 
     @Mock
@@ -294,10 +295,10 @@ class OrderServiceTest {
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(deliveredOrder));
 
         // When & Then
-        IllegalStateException exception = assertThrows(IllegalStateException.class, 
+        OrderStatusException exception = assertThrows(OrderStatusException.class, 
             () -> orderService.cancelOrder(orderId, userId, reason));
         
-        assertTrue(exception.getMessage().contains("Order cannot be cancelled"));
+        assertTrue(exception.getMessage().contains("cannot be cancelled"));
         verify(orderRepository).findById(orderId);
         verify(orderRepository, never()).save(any(Order.class));
     }

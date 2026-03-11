@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -6,36 +6,50 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { useApp } from '../../contexts/AppContext';
-import { restaurants, cuisineTypes } from '../../data/mockData';
-import { ShoppingCart, Search, MapPin, Clock, Star, LogOut } from 'lucide-react';
+import restaurantService from '../../services/restaurant.service';
+import type { Restaurant } from '../../services/restaurant.service';
+import { ShoppingCart, Search, Clock, Star, LogOut, Loader2, UtensilsCrossed } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
-
-const restaurantImages: Record<string, string> = {
-  'thai-street-food': 'https://images.unsplash.com/photo-1568882041008-c0954e91caba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0aGFpJTIwc3RyZWV0JTIwZm9vZHxlbnwxfHx8fDE3NzI3NjkxNjN8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  'japanese-sushi': 'https://images.unsplash.com/photo-1717988732486-285ea23a6f88?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxqYXBhbmVzZSUyMHN1c2hpfGVufDF8fHx8MTc3Mjc2OTE2NHww&ixlib=rb-4.1.0&q=80&w=1080',
-  'italian-pizza': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxpdGFsaWFuJTIwcGl6emF8ZW58MXx8fHwxNzcyNzY5MTY0fDA&ixlib=rb-4.1.0&q=80&w=1080',
-  'thai-restaurant': 'https://images.unsplash.com/photo-1675150277436-9c7348972c11?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0aGFpJTIwcmVzdGF1cmFudHxlbnwxfHx8fDE3NzI3NjkxNjV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  'japanese-ramen': 'https://images.unsplash.com/photo-1638866281450-3933540af86a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxqYXBhbmVzZSUyMHJhbWVufGVufDF8fHx8MTc3Mjc2OTE2NXww&ixlib=rb-4.1.0&q=80&w=1080',
-  'american-burger': 'https://images.unsplash.com/photo-1728836485840-93054eef0f2d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhbWVyaWNhbiUyMGJ1cmdlcnxlbnwxfHx8fDE3NzI3NjkxNjV8MA&ixlib=rb-4.1.0&q=80&w=1080'
-};
 
 export default function RestaurantList() {
   const navigate = useNavigate();
   const { user, cart, logout } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [cuisineFilter, setCuisineFilter] = useState('All');
-  const [distanceFilter, setDistanceFilter] = useState('all');
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [cuisineTypes, setCuisineTypes] = useState<string[]>(['All']);
+  const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
 
-  const filteredRestaurants = restaurants.filter(restaurant => {
-    const matchesSearch = restaurant.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCuisine = cuisineFilter === 'All' || restaurant.cuisine === cuisineFilter;
-    const matchesDistance = distanceFilter === 'all' || 
-      (distanceFilter === '1' && restaurant.distance <= 1) ||
-      (distanceFilter === '2' && restaurant.distance <= 2) ||
-      (distanceFilter === '5' && restaurant.distance <= 5);
-    
-    return matchesSearch && matchesCuisine && matchesDistance && restaurant.isActive;
-  });
+  const loadRestaurants = useCallback(async () => {
+    setLoading(true);
+    try {
+      const searchTerm = searchQuery.trim() || undefined;
+      const cuisine = cuisineFilter !== 'All' ? cuisineFilter : undefined;
+      const data = await restaurantService.searchRestaurants({ searchTerm, cuisineType: cuisine });
+      const list: Restaurant[] = Array.isArray(data) ? data : ((data as any)?.content ?? []);
+      setRestaurants(list);
+      setTotal((data as any)?.totalElements ?? list.length);
+    } catch {
+      setRestaurants([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, cuisineFilter]);
+
+  // Load cuisine types once
+  useEffect(() => {
+    restaurantService.getCuisineTypes?.().then(types => {
+      if (types?.length) setCuisineTypes(['All', ...types]);
+    }).catch(() => {});
+  }, []);
+
+  // Debounced load on filter change
+  useEffect(() => {
+    const timer = setTimeout(loadRestaurants, 300);
+    return () => clearTimeout(timer);
+  }, [loadRestaurants]);
 
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -102,69 +116,70 @@ export default function RestaurantList() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={distanceFilter} onValueChange={setDistanceFilter}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Distance" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Distances</SelectItem>
-                <SelectItem value="1">Within 1 km</SelectItem>
-                <SelectItem value="2">Within 2 km</SelectItem>
-                <SelectItem value="5">Within 5 km</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
       </div>
 
       {/* Restaurant Grid */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <p className="text-sm text-gray-600 mb-4">
-          {filteredRestaurants.length} restaurants found
-        </p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredRestaurants.map(restaurant => (
-            <Card 
-              key={restaurant.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => navigate(`/customer/restaurant/${restaurant.id}`)}
-            >
-              <div className="relative h-48 overflow-hidden rounded-t-lg">
-                <ImageWithFallback
-                  src={restaurantImages[restaurant.image]}
-                  alt={restaurant.name}
-                  className="w-full h-full object-cover"
-                />
-                <Badge className="absolute top-2 right-2">
-                  {restaurant.cuisine}
-                </Badge>
-              </div>
-              <CardContent className="pt-4">
-                <h3 className="font-semibold mb-2">{restaurant.name}</h3>
-                <div className="space-y-1 text-sm text-gray-600">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                    <span>{restaurant.rating}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <MapPin className="w-4 h-4" />
-                    <span>{restaurant.distance} km away</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    <span>{restaurant.deliveryTime}</span>
-                  </div>
-                  <p className="text-xs">Min. order: ฿{restaurant.minOrder}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {filteredRestaurants.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No restaurants found matching your criteria</p>
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
+        ) : (
+          <>
+            <p className="text-sm text-gray-600 mb-4">{total} restaurants found</p>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {restaurants.map(restaurant => (
+                <Card
+                  key={restaurant.id}
+                  className="hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => navigate(`/customer/restaurant/${restaurant.id}`)}
+                >
+                  <div className="relative h-48 overflow-hidden rounded-t-lg">
+                    <ImageWithFallback
+                      src={restaurant.coverImageUrl ?? restaurant.logoUrl ?? ''}
+                      alt={restaurant.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <Badge className="absolute top-2 right-2">
+                      {restaurant.cuisineType}
+                    </Badge>
+                  </div>
+                  <CardContent className="pt-4">
+                    <h3 className="font-semibold mb-2">{restaurant.name}</h3>
+                    <div className="space-y-1 text-sm text-gray-600">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                        <span>{restaurant.averageRating?.toFixed(1) ?? 'New'}</span>
+                      </div>
+                      {!!restaurant.estimatedDeliveryTime && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          <span>{restaurant.estimatedDeliveryTime} min</span>
+                        </div>
+                      )}
+                      {restaurant.cuisineType && (
+                        <div className="flex items-center gap-1">
+                          <UtensilsCrossed className="w-4 h-4" />
+                          <span>{restaurant.cuisineType}</span>
+                        </div>
+                      )}
+                      {restaurant.minimumOrderAmount != null && (
+                        <p className="text-xs">Min. order: ฿{restaurant.minimumOrderAmount}</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {restaurants.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-500">No restaurants found matching your criteria</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

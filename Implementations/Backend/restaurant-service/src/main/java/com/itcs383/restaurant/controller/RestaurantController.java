@@ -7,6 +7,7 @@ import com.itcs383.common.enums.RestaurantStatus;
 import com.itcs383.restaurant.dto.CreateMenuCategoryRequest;
 import com.itcs383.restaurant.dto.CreateMenuItemRequest;
 import com.itcs383.restaurant.dto.CreateRestaurantRequest;
+import com.itcs383.restaurant.dto.UpdateMenuItemRequest;
 import com.itcs383.restaurant.entity.MenuCategory;
 import com.itcs383.restaurant.service.RestaurantService;
 
@@ -34,7 +35,7 @@ import java.util.List;
  * Handles restaurant operations, menu management, and discovery features
  */
 @RestController
-@RequestMapping("/api/v1/restaurants")
+@RequestMapping("/api/restaurants")
 @Tag(name = "Restaurant Management", description = "APIs for restaurant and menu management")
 public class RestaurantController {
 
@@ -106,7 +107,7 @@ public class RestaurantController {
     public ResponseEntity<ApiResponse<Page<RestaurantDTO>>> getAllRestaurants(
             @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Sort field") @RequestParam(defaultValue = "name") String sortBy,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "id") String sortBy,
             @Parameter(description = "Sort direction") @RequestParam(defaultValue = "asc") String sortDir) {
         
         logger.debug("Getting all restaurants - page: {}, size: {}", page, size);
@@ -139,7 +140,7 @@ public class RestaurantController {
             @Parameter(description = "Customer longitude") @RequestParam(required = false) Double longitude,
             @Parameter(description = "Page number") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Sort field") @RequestParam(defaultValue = "name") String sortBy,
+            @Parameter(description = "Sort field") @RequestParam(defaultValue = "id") String sortBy,
             @Parameter(description = "Sort direction") @RequestParam(defaultValue = "asc") String sortDir) {
         
         logger.debug("Searching restaurants with filters - term: {}, cuisine: {}, location: {},{}", 
@@ -164,6 +165,7 @@ public class RestaurantController {
     /**
      * Get restaurants by cuisine type
      */
+    @SuppressWarnings("null")
     @GetMapping("/cuisine/{cuisineType}")
     @Operation(summary = "Get restaurants by cuisine", description = "Filter restaurants by cuisine type")
     public ResponseEntity<ApiResponse<Page<RestaurantDTO>>> getRestaurantsByCuisine(
@@ -174,7 +176,7 @@ public class RestaurantController {
         logger.debug("Getting restaurants by cuisine: {}", cuisineType);
         
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("name"));
+            Pageable pageable = PageRequest.of(page, size, Sort.by("id"));
             Page<RestaurantDTO> restaurants = restaurantService.getRestaurantsByCuisine(cuisineType, pageable);
             return ResponseEntity.ok(ApiResponse.success(restaurants));
         } catch (Exception e) {
@@ -227,6 +229,7 @@ public class RestaurantController {
     /**
      * Update restaurant
      */
+    @SuppressWarnings("null")
     @PutMapping("/{id}")
     @Operation(summary = "Update restaurant", description = "Update restaurant information")
     public ResponseEntity<ApiResponse<RestaurantDTO>> updateRestaurant(
@@ -256,6 +259,7 @@ public class RestaurantController {
     /**
      * Update restaurant status (Admin only)
      */
+    @SuppressWarnings("null")
     @PutMapping("/{id}/status")
     @Operation(summary = "Update restaurant status", description = "Admin operation to approve/reject restaurants")
     public ResponseEntity<ApiResponse<RestaurantDTO>> updateRestaurantStatus(
@@ -282,6 +286,7 @@ public class RestaurantController {
     /**
      * Toggle restaurant availability
      */
+    @SuppressWarnings("null")
     @PutMapping("/{id}/availability")
     @Operation(summary = "Toggle restaurant availability", description = "Enable/disable order acceptance")
     public ResponseEntity<ApiResponse<RestaurantDTO>> toggleRestaurantAvailability(
@@ -309,6 +314,7 @@ public class RestaurantController {
     /**
      * Get restaurant menu
      */
+    @SuppressWarnings("null")
     @GetMapping("/{id}/menu")
     @Operation(summary = "Get restaurant menu", description = "Retrieve paginated menu items for a restaurant")
     public ResponseEntity<ApiResponse<Page<MenuItemDTO>>> getRestaurantMenu(
@@ -332,6 +338,7 @@ public class RestaurantController {
     /**
      * Add menu item
      */
+    @SuppressWarnings("null")
     @PostMapping("/{id}/menu")
     @Operation(summary = "Add menu item", description = "Add new item to restaurant menu")
     public ResponseEntity<ApiResponse<MenuItemDTO>> addMenuItem(
@@ -352,6 +359,86 @@ public class RestaurantController {
             logger.error("Error adding menu item to restaurant: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("Failed to add menu item"));
+        }
+    }
+
+    /**
+     * Update menu item
+     */
+    @SuppressWarnings("null")
+    @PutMapping("/{id}/menu/{itemId}")
+    @Operation(summary = "Update menu item", description = "Update an existing menu item")
+    public ResponseEntity<ApiResponse<MenuItemDTO>> updateMenuItem(
+            @Parameter(description = "Restaurant ID") @PathVariable Long id,
+            @Parameter(description = "Menu item ID") @PathVariable Long itemId,
+            @Valid @RequestBody UpdateMenuItemRequest request) {
+        
+        logger.info("Updating menu item {} in restaurant {}", itemId, id);
+        
+        try {
+            MenuItemDTO menuItem = restaurantService.updateMenuItem(id, itemId, request);
+            return ResponseEntity.ok(ApiResponse.success(menuItem, "Menu item updated successfully"));
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid menu item update request: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error(e.getMessage()));
+        } catch (RuntimeException e) {
+            logger.warn("Menu item not found: {}", itemId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Menu item not found"));
+        } catch (Exception e) {
+            logger.error("Error updating menu item: {}", itemId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Failed to update menu item"));
+        }
+    }
+
+    /**
+     * Delete menu item
+     */
+    @DeleteMapping("/{id}/menu/{itemId}")
+    @Operation(summary = "Delete menu item", description = "Remove a menu item from the restaurant")
+    public ResponseEntity<ApiResponse<Void>> deleteMenuItem(
+            @Parameter(description = "Restaurant ID") @PathVariable Long id,
+            @Parameter(description = "Menu item ID") @PathVariable Long itemId) {
+        
+        logger.info("Deleting menu item {} from restaurant {}", itemId, id);
+        
+        try {
+            restaurantService.deleteMenuItem(id, itemId);
+            return ResponseEntity.ok(ApiResponse.success(null, "Menu item deleted successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Menu item not found"));
+        } catch (Exception e) {
+            logger.error("Error deleting menu item: {}", itemId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Failed to delete menu item"));
+        }
+    }
+
+    /**
+     * Delete restaurant
+     */
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete restaurant", description = "Permanently delete a restaurant")
+    public ResponseEntity<ApiResponse<Void>> deleteRestaurant(
+            @Parameter(description = "Restaurant ID") @PathVariable Long id) {
+        
+        logger.info("Deleting restaurant: {}", id);
+        
+        try {
+            restaurantService.deleteRestaurant(id);
+            return ResponseEntity.ok(ApiResponse.success(null, "Restaurant deleted successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(MSG_RESTAURANT_NOT_FOUND));
+        } catch (Exception e) {
+            logger.error("Error deleting restaurant: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Failed to delete restaurant"));
         }
     }
 
@@ -378,6 +465,7 @@ public class RestaurantController {
     /**
      * Search menu items
      */
+    @SuppressWarnings("null")
     @GetMapping("/{id}/menu/search")
     @Operation(summary = "Search menu items", description = "Search items within restaurant menu")
     public ResponseEntity<ApiResponse<Page<MenuItemDTO>>> searchMenuItems(
@@ -424,6 +512,7 @@ public class RestaurantController {
     /**
      * Add menu category
      */
+    @SuppressWarnings("null")
     @PostMapping("/{id}/categories")
     @Operation(summary = "Add menu category", description = "Add new category to restaurant menu")
     public ResponseEntity<ApiResponse<MenuCategory>> addMenuCategory(
@@ -450,6 +539,7 @@ public class RestaurantController {
     /**
      * Get menu items by category
      */
+    @SuppressWarnings("null")
     @GetMapping("/categories/{categoryId}/items")
     @Operation(summary = "Get items by category", description = "Retrieve menu items for specific category")
     public ResponseEntity<ApiResponse<Page<MenuItemDTO>>> getMenuItemsByCategory(
@@ -467,6 +557,32 @@ public class RestaurantController {
             logger.error("Error fetching menu items by category: {}", categoryId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("Failed to fetch menu items"));
+        }
+    }
+
+    /**
+     * Delete menu category
+     */
+    @DeleteMapping("/{id}/categories/{categoryId}")
+    @Operation(summary = "Delete menu category", description = "Remove a category from the restaurant menu")
+    public ResponseEntity<ApiResponse<Void>> deleteMenuCategory(
+            @Parameter(description = "Restaurant ID") @PathVariable Long id,
+            @Parameter(description = "Category ID") @PathVariable Long categoryId) {
+        
+        logger.info("Deleting category {} from restaurant {}", categoryId, id);
+        
+        try {
+            restaurantService.deleteMenuCategory(id, categoryId);
+            return ResponseEntity.ok(ApiResponse.success(null, "Category deleted successfully"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Category not found"));
+        } catch (Exception e) {
+            logger.error("Error deleting category: {}", categoryId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Failed to delete category"));
         }
     }
 
@@ -507,6 +623,21 @@ public class RestaurantController {
             logger.error("Error fetching pending restaurants", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("Failed to fetch pending restaurants"));
+        }
+    }
+
+    /**
+     * Admin statistics (Admin only)
+     */
+    @GetMapping("/stats")
+    @Operation(summary = "Get restaurant stats", description = "Admin endpoint to view restaurant counts")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Long>>> getRestaurantStats() {
+        try {
+            return ResponseEntity.ok(ApiResponse.success(restaurantService.getRestaurantStats()));
+        } catch (Exception e) {
+            logger.error("Error fetching restaurant stats", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("Failed to fetch restaurant stats"));
         }
     }
 }

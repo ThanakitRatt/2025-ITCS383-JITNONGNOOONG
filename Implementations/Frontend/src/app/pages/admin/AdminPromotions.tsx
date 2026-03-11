@@ -28,7 +28,7 @@ interface SystemPromotion {
 export default function AdminPromotions() {
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [promotions, setPromotions] = useState<SystemPromotion[]>([
+  const defaultPromotions: SystemPromotion[] = [
     {
       id: 'SYSPROMO001',
       code: 'NEWUSER50',
@@ -55,7 +55,10 @@ export default function AdminPromotions() {
       targetGroup: 'all',
       active: true
     }
-  ]);
+  ];
+  const [promotions, setPromotions] = useState<SystemPromotion[]>(() => {
+    try { const s = localStorage.getItem('admin_promotions'); return s ? JSON.parse(s) : defaultPromotions; } catch { return defaultPromotions; }
+  });
   
   const [formData, setFormData] = useState({
     code: '',
@@ -67,6 +70,11 @@ export default function AdminPromotions() {
     validUntil: '',
     targetGroup: 'all'
   });
+
+  const updatePromotions = (next: SystemPromotion[]) => {
+    localStorage.setItem('admin_promotions', JSON.stringify(next));
+    setPromotions(next);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +93,7 @@ export default function AdminPromotions() {
       active: true
     };
     
-    setPromotions([...promotions, newPromo]);
+    updatePromotions([...promotions, newPromo]);
     setFormData({
       code: '',
       title: '',
@@ -101,14 +109,12 @@ export default function AdminPromotions() {
   };
 
   const handleDelete = (id: string) => {
-    setPromotions(promotions.filter(p => p.id !== id));
+    updatePromotions(promotions.filter(p => p.id !== id));
     toast.success('Promotion deleted');
   };
 
   const toggleActive = (id: string) => {
-    setPromotions(promotions.map(p => 
-      p.id === id ? { ...p, active: !p.active } : p
-    ));
+    updatePromotions(promotions.map(p => p.id === id ? { ...p, active: !p.active } : p));
     toast.success('Promotion status updated');
   };
 

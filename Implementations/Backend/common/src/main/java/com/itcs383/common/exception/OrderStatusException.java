@@ -22,6 +22,12 @@ public class OrderStatusException extends RuntimeException {
         this.requestedStatus = null;
     }
 
+    public OrderStatusException(String message, Throwable cause) {
+        super(message, cause);
+        this.currentStatus = null;
+        this.requestedStatus = null;
+    }
+
     public OrderStatus getCurrentStatus() {
         return currentStatus;
     }

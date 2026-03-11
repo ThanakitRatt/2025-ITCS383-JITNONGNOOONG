@@ -59,7 +59,7 @@ services:
     networks:
       - mhar-network
 
-  # Order Service (Your responsibility)
+  # Order Service
   order-service:
     build:
       context: ./mhar-order-service
@@ -81,7 +81,7 @@ services:
     networks:
       - mhar-network
 
-  # Restaurant Service (Your responsibility)
+  # Restaurant Service
   restaurant-service:
     build:
       context: ./mhar-restaurant-service
@@ -103,7 +103,7 @@ services:
     networks:
       - mhar-network
 
-  # Auth Service (Natkrittar's responsibility)
+  # Auth Service
   auth-service:
     build:
       context: ./mhar-auth-service
@@ -123,7 +123,7 @@ services:
     networks:
       - mhar-network
 
-  # Payment Service (Pundharee's responsibility)
+  # Payment Service
   payment-service:
     build:
       context: ./mhar-payment-service
@@ -143,7 +143,7 @@ services:
     networks:
       - mhar-network
 
-  # Rider Service (Pundharee's responsibility)
+  # Rider Service
   rider-service:
     build:
       context: ./mhar-rider-service

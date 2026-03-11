@@ -1,16 +1,31 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useApp } from '../contexts/AppContext';
+
+const ROLE_HOME: Record<string, string> = {
+  customer: '/customer/restaurants',
+  restaurant: '/restaurant/dashboard',
+  rider: '/rider/dashboard',
+  admin: '/admin/dashboard',
+};
 
 export default function SplashScreen() {
   const navigate = useNavigate();
+  const { user } = useApp();
   const [phase, setPhase] = useState<'logo' | 'tagline' | 'fade'>('logo');
 
   useEffect(() => {
+    // Already logged in — skip splash and go straight to the role home
+    if (user?.role) {
+      navigate(ROLE_HOME[user.role] ?? '/login', { replace: true });
+      return;
+    }
+
     const t1 = setTimeout(() => setPhase('tagline'), 800);
     const t2 = setTimeout(() => setPhase('fade'), 2200);
     const t3 = setTimeout(() => navigate('/login'), 2900);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
-  }, [navigate]);
+  }, [navigate, user]);
 
   return (
     <div

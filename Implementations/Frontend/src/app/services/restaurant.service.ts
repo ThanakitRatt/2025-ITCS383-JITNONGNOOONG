@@ -19,15 +19,24 @@ export interface Restaurant {
   name: string;
   description?: string;
   cuisineType: string;
-  address: Address;
+  address: string;
+  latitude?: number;
+  longitude?: number;
   phoneNumber: string;
-  openingHours?: string;
+  email?: string;
+  openingTime?: string;
+  closingTime?: string;
+  ownerId?: number;
+  status?: string;
   isActive: boolean;
+  acceptsOrders?: boolean;
   averageRating: number;
-  imageUrl?: string;
-  minOrder?: number;
+  logoUrl?: string;
+  coverImageUrl?: string;
+  minimumOrderAmount?: number;
   deliveryFee?: number;
-  estimatedDeliveryTime?: string;
+  estimatedDeliveryTime?: number;
+  isCurrentlyOpen?: boolean;
 }
 
 export interface Address {
@@ -44,10 +53,80 @@ export interface MenuItem {
   name: string;
   description: string;
   price: number;
-  category: string;
+  categoryId?: number;
+  categoryName?: string;
   imageUrl?: string;
   isAvailable: boolean;
   preparationTime?: number;
+}
+
+export interface MenuCategory {
+  id: string;
+  restaurantId: string;
+  name: string;
+  description?: string;
+  displayOrder: number;
+}
+
+export interface CreateRestaurantRequest {
+  name: string;
+  description?: string;
+  cuisineType: string;
+  phoneNumber: string;
+  email: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  deliveryFee: number;
+  minimumOrderAmount: number;
+  openingTime: string;
+  closingTime: string;
+  estimatedDeliveryTime: number;
+  ownerId: number;
+}
+
+export interface UpdateRestaurantRequest {
+  name?: string;
+  description?: string;
+  cuisineType?: string;
+  phoneNumber?: string;
+  email?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  deliveryFee?: number;
+  minimumOrderAmount?: number;
+  openingTime?: string;
+  closingTime?: string;
+  estimatedDeliveryTime?: number;
+}
+
+export interface CreateMenuItemRequest {
+  name: string;
+  description: string;
+  price: number;
+  categoryId: number;
+  imageUrl?: string;
+  preparationTime?: number;
+  isAvailable?: boolean;
+  displayOrder?: number;
+}
+
+export interface UpdateMenuItemRequest {
+  name?: string;
+  description?: string;
+  price?: number;
+  categoryId?: number;
+  imageUrl?: string;
+  preparationTime?: number;
+  isAvailable?: boolean;
+  displayOrder?: number;
+}
+
+export interface CreateCategoryRequest {
+  name: string;
+  description?: string;
+  displayOrder?: number;
 }
 
 export interface SearchFilters {
@@ -150,6 +229,21 @@ class RestaurantService {
   }
 
   /**
+   * Get available cuisine types
+   */
+  async getCuisineTypes(): Promise<string[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<string[]>>(
+        `${API_ENDPOINTS.RESTAURANTS.BASE}/cuisine-types`
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to fetch cuisine types:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
    * Get top rated restaurants
    */
   async getTopRatedRestaurants(limit: number = 10): Promise<Restaurant[]> {
@@ -173,11 +267,11 @@ class RestaurantService {
    */
   async getRestaurantMenu(restaurantId: string): Promise<MenuItem[]> {
     try {
-      const response = await apiClient.get<ApiResponse<MenuItem[]>>(
+      const response = await apiClient.get<ApiResponse<PaginatedResponse<MenuItem>>>(
         API_ENDPOINTS.RESTAURANTS.MENU(restaurantId)
       );
       
-      return response.data.data;
+      return response.data.data.content ?? [];
     } catch (error) {
       console.error(`Failed to fetch menu for restaurant ${restaurantId}:`, handleApiError(error));
       throw error;
@@ -196,6 +290,240 @@ class RestaurantService {
       return response.data.data;
     } catch (error) {
       console.error(`Failed to fetch menu item ${itemId}:`, handleApiError(error));
+      throw error;
+    }
+  }
+
+  // ==================== CREATE OPERATIONS ====================
+
+  /**
+   * Create new restaurant
+   */
+  async createRestaurant(data: CreateRestaurantRequest): Promise<Restaurant> {
+    try {
+      const response = await apiClient.post<ApiResponse<Restaurant>>(
+        API_ENDPOINTS.RESTAURANTS.BASE,
+        data
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to create restaurant:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Add menu item to restaurant
+   */
+  async addMenuItem(restaurantId: string, data: CreateMenuItemRequest): Promise<MenuItem> {
+    try {
+      const response = await apiClient.post<ApiResponse<MenuItem>>(
+        API_ENDPOINTS.RESTAURANTS.MENU(restaurantId),
+        data
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to add menu item:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Add menu category
+   */
+  async addMenuCategory(restaurantId: string, data: CreateCategoryRequest): Promise<MenuCategory> {
+    try {
+      const response = await apiClient.post<ApiResponse<MenuCategory>>(
+        API_ENDPOINTS.RESTAURANTS.CATEGORIES(restaurantId),
+        data
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to add category:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  // ==================== UPDATE OPERATIONS ====================
+
+  /**
+   * Update restaurant information
+   */
+  async updateRestaurant(id: string, data: UpdateRestaurantRequest): Promise<Restaurant> {
+    try {
+      const response = await apiClient.put<ApiResponse<Restaurant>>(
+        API_ENDPOINTS.RESTAURANTS.BY_ID(id),
+        data
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to update restaurant:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Update menu item
+   */
+  async updateMenuItem(
+    restaurantId: string,
+    itemId: string,
+    data: UpdateMenuItemRequest
+  ): Promise<MenuItem> {
+    try {
+      const response = await apiClient.put<ApiResponse<MenuItem>>(
+        API_ENDPOINTS.RESTAURANTS.MENU_ITEM(restaurantId, itemId),
+        data
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to update menu item:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Update restaurant status (Admin)
+   */
+  async updateRestaurantStatus(
+    id: string,
+    status: string,
+    reason?: string
+  ): Promise<Restaurant> {
+    try {
+      const response = await apiClient.put<ApiResponse<Restaurant>>(
+        API_ENDPOINTS.RESTAURANTS.STATUS(id),
+        null,
+        { params: { status, reason } }
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to update restaurant status:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Toggle restaurant availability
+   */
+  async toggleRestaurantAvailability(
+    id: string,
+    acceptsOrders: boolean
+  ): Promise<Restaurant> {
+    try {
+      const response = await apiClient.put<ApiResponse<Restaurant>>(
+        API_ENDPOINTS.RESTAURANTS.AVAILABILITY(id),
+        null,
+        { params: { acceptsOrders } }
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to toggle availability:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  // ==================== DELETE OPERATIONS ====================
+
+  /**
+   * Delete restaurant
+   */
+  async deleteRestaurant(id: string): Promise<void> {
+    try {
+      await apiClient.delete(API_ENDPOINTS.RESTAURANTS.BY_ID(id));
+    } catch (error) {
+      console.error('Failed to delete restaurant:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Delete menu item
+   */
+  async deleteMenuItem(restaurantId: string, itemId: string): Promise<void> {
+    try {
+      await apiClient.delete(
+        API_ENDPOINTS.RESTAURANTS.MENU_ITEM(restaurantId, itemId)
+      );
+    } catch (error) {
+      console.error('Failed to delete menu item:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Delete menu category
+   */
+  async deleteMenuCategory(restaurantId: string, categoryId: string): Promise<void> {
+    try {
+      await apiClient.delete(
+        API_ENDPOINTS.RESTAURANTS.CATEGORY(restaurantId, categoryId)
+      );
+    } catch (error) {
+      console.error('Failed to delete category:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  // ==================== ADDITIONAL OPERATIONS ====================
+
+  /**
+   * Get restaurants by owner
+   */
+  async getOwnerRestaurants(ownerId: string): Promise<Restaurant[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<Restaurant[]>>(
+        API_ENDPOINTS.RESTAURANTS.BY_OWNER(ownerId)
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to fetch owner restaurants:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Get restaurant categories
+   */
+  async getRestaurantCategories(restaurantId: string): Promise<MenuCategory[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<MenuCategory[]>>(
+        API_ENDPOINTS.RESTAURANTS.CATEGORIES(restaurantId)
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to fetch categories:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Search menu items within restaurant
+   */
+  async searchMenuItems(
+    restaurantId: string,
+    searchTerm: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<PaginatedResponse<MenuItem>> {
+    try {
+      const response = await apiClient.get<ApiResponse<PaginatedResponse<MenuItem>>>(
+        API_ENDPOINTS.RESTAURANTS.MENU_SEARCH(restaurantId),
+        { params: { searchTerm, page, size } }
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to search menu items:', handleApiError(error));
       throw error;
     }
   }

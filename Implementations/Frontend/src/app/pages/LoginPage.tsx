@@ -1,76 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../contexts/AppContext';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '../components/ui/input-otp';
+import authService from '../services/auth.service';
 
-// Mock account database — in production this lives in the Java backend
-const MOCK_ACCOUNTS = [
-  {
-    email: 'customer@foodexpress.com',
-    password: 'customer123',
-    role: 'customer' as const,
-    id: 'CUST001',
-    name: 'John Doe',
-    redirect: '/customer/restaurants',
-  },
-  {
-    email: 'sarah@foodexpress.com',
-    password: 'sarah123',
-    role: 'customer' as const,
-    id: 'CUST002',
-    name: 'Sarah Wilson',
-    redirect: '/customer/restaurants',
-  },
-  {
-    email: 'restaurant@foodexpress.com',
-    password: 'restaurant123',
-    role: 'restaurant' as const,
-    id: 'REST001',
-    name: 'Bangkok Street Food',
-    restaurantId: 'REST001',
-    redirect: '/restaurant/dashboard',
-  },
-  {
-    email: 'sushi@foodexpress.com',
-    password: 'sushi123',
-    role: 'restaurant' as const,
-    id: 'REST002',
-    name: 'Sushi Master',
-    restaurantId: 'REST002',
-    redirect: '/restaurant/dashboard',
-  },
-  {
-    email: 'rider@foodexpress.com',
-    password: 'rider123',
-    role: 'rider' as const,
-    id: 'RIDER001',
-    name: 'Mike Chen',
-    redirect: '/rider/dashboard',
-  },
-  {
-    email: 'admin@foodexpress.com',
-    password: 'admin123',
-    role: 'admin' as const,
-    id: 'ADMIN001',
-    name: 'Admin User',
-    redirect: '/admin/dashboard',
-  },
+// Demo account credentials for testing
+const DEMO_ACCOUNTS = [
+  { label: '👤 Customer', email: 'customer@foodexpress.com', password: 'customer123' },
+  { label: '🍽️ Restaurant', email: 'restaurant@foodexpress.com', password: 'restaurant123' },
+  { label: '🛵 Rider', email: 'rider@foodexpress.com', password: 'rider123' },
+  { label: '🛡️ Admin', email: 'admin@foodexpress.com', password: 'admin123' },
 ];
 
 const ROLE_COLORS = {
-  customer: { from: '#3b82f6', to: '#6366f1', label: 'Customer', emoji: '👤' },
-  restaurant: { from: '#22c55e', to: '#16a34a', label: 'Restaurant', emoji: '🍽️' },
-  rider: { from: '#f97316', to: '#ea580c', label: 'Rider', emoji: '🛵' },
-  admin: { from: '#a855f7', to: '#7c3aed', label: 'Administrator', emoji: '🛡️' },
+  CUSTOMER: { from: '#3b82f6', to: '#6366f1', label: 'Customer', emoji: '👤', redirect: '/customer/restaurants' },
+  RESTAURANT: { from: '#22c55e', to: '#16a34a', label: 'Restaurant', emoji: '🍽️', redirect: '/restaurant/dashboard' },
+  RIDER: { from: '#f97316', to: '#ea580c', label: 'Rider', emoji: '🛵', redirect: '/rider/dashboard' },
+  ADMIN: { from: '#a855f7', to: '#7c3aed', label: 'Administrator', emoji: '🛡️', redirect: '/admin/dashboard' },
 };
 
 type Step = 'credentials' | 'otp';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { setUser } = useApp();
+  const { user, setUser } = useApp();
+
+  // Already logged in — redirect to the appropriate home immediately
+  useEffect(() => {
+    if (user?.role) {
+      const ROLE_REDIRECT: Record<string, string> = {
+        customer: '/customer/restaurants',
+        restaurant: '/restaurant/dashboard',
+        rider: '/rider/dashboard',
+        admin: '/admin/dashboard',
+      };
+      navigate(ROLE_REDIRECT[user.role] ?? '/', { replace: true });
+    }
+  }, [user, navigate]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -78,54 +46,91 @@ export default function LoginPage() {
   const [step, setStep] = useState<Step>('credentials');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-  const [matchedAccount, setMatchedAccount] = useState<typeof MOCK_ACCOUNTS[0] | null>(null);
+  const [userRole, setUserRole] = useState<keyof typeof ROLE_COLORS | null>(null);
+  const [userName, setUserName] = useState('');
   const [error, setError] = useState('');
 
-  const handleCredentialsSubmit = (e: React.FormEvent) => {
+  const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      const account = MOCK_ACCOUNTS.find(
-        (a) => a.email.toLowerCase() === email.toLowerCase() && a.password === password
-      );
-
-      if (!account) {
-        setError('Invalid email or password. Please try again.');
-        setLoading(false);
-        return;
+    try {
+      // Call backend login API (this triggers OTP sending)
+      const response = await authService.login({ email, password });
+      
+      if (response.success) {
+        // Store user info temporarily for OTP step
+        setUserName(response.data.user.name);
+        setUserRole(response.data.user.role as keyof typeof ROLE_COLORS);
+        
+        // Move to OTP step
+        setStep('otp');
+        toast.success('OTP sent to your email');
+      } else {
+        setError(response.message || 'Login failed. Please try again.');
       }
-
-      setMatchedAccount(account);
-      setStep('otp');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Invalid email or password';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
       setLoading(false);
-      toast.success('OTP sent to your registered mobile number');
-    }, 900);
+    }
   };
 
-  const handleOTPVerify = () => {
+  const handleOTPVerify = async () => {
     if (otp.length !== 6) {
       toast.error('Please enter a valid 6-digit OTP');
       return;
     }
 
     setLoading(true);
-    setTimeout(() => {
-      if (!matchedAccount) return;
-      setUser({
-        id: matchedAccount.id,
-        role: matchedAccount.role,
-        name: matchedAccount.name,
-        email: matchedAccount.email,
-        restaurantId: (matchedAccount as any).restaurantId,
-      });
-      toast.success(`Welcome back, ${matchedAccount.name}!`);
-      navigate(matchedAccount.redirect);
-    }, 700);
+    
+    try {
+      // Verify OTP with backend
+      const response = await authService.verifyOtp({ email, otp });
+      
+      if (response.success && response.data.token) {
+        const user = response.data.user;
+        
+        // Update app context with user data
+        setUser({
+          id: user.id.toString(),
+          role: user.role.toLowerCase() as 'customer' | 'restaurant' | 'rider' | 'admin',
+          name: user.name,
+          email: user.email,
+        });
+        
+        toast.success(`Welcome back, ${user.name}!`);
+        
+        // Redirect based on role
+        const roleKey = user.role as keyof typeof ROLE_COLORS;
+        const redirectPath = ROLE_COLORS[roleKey]?.redirect || '/';
+        navigate(redirectPath);
+      } else {
+        toast.error(response.message || 'OTP verification failed');
+      }
+    } catch (err: any) {
+      console.error('OTP verification error:', err);
+      const errorMessage = err.response?.data?.message || err.message || 'Invalid OTP';
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const roleInfo = matchedAccount ? ROLE_COLORS[matchedAccount.role] : null;
+  const handleResendOtp = async () => {
+    try {
+      await authService.resendOtp(email);
+      toast.success('OTP resent to your email');
+    } catch (err: any) {
+      toast.error('Failed to resend OTP. Please try again.');
+    }
+  };
+
+  const roleInfo = userRole ? ROLE_COLORS[userRole] : null;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-orange-50 to-blue-50">
@@ -203,12 +208,7 @@ export default function LoginPage() {
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <p className="text-center text-xs mb-3 text-gray-500">— Demo Accounts —</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: '👤 Customer', email: 'customer@foodexpress.com', password: 'customer123' },
-                    { label: '🍽️ Restaurant', email: 'restaurant@foodexpress.com', password: 'restaurant123' },
-                    { label: '🛵 Rider', email: 'rider@foodexpress.com', password: 'rider123' },
-                    { label: '🛡️ Admin', email: 'admin@foodexpress.com', password: 'admin123' },
-                  ].map((demo) => (
+                  {DEMO_ACCOUNTS.map((demo) => (
                     <button
                       key={demo.email}
                       type="button"
@@ -244,12 +244,12 @@ export default function LoginPage() {
                   >
                     <span style={{ fontSize: 28 }}>{roleInfo.emoji}</span>
                     <div>
-                      <p className="text-gray-900 text-sm font-semibold">{matchedAccount?.name}</p>
+                      <p className="text-gray-900 text-sm font-semibold">{userName}</p>
                       <p className="text-xs" style={{ color: roleInfo.from }}>{roleInfo.label} Account</p>
                     </div>
                   </div>
                   <p className="text-center text-sm text-gray-600">
-                    Enter the 6-digit code sent to your phone
+                    Enter the 6-digit code sent to your email
                   </p>
                 </div>
               )}
@@ -268,7 +268,7 @@ export default function LoginPage() {
               </div>
 
               <p className="text-center text-xs text-gray-400">
-                Demo: any 6-digit code will work
+                Check your terminal for OTP code (demo mode) • <button type="button" onClick={handleResendOtp} className="text-orange-500 hover:underline">Resend OTP</button>
               </p>
 
               <button
@@ -280,7 +280,7 @@ export default function LoginPage() {
               </button>
 
               <button
-                onClick={() => { setStep('credentials'); setOtp(''); setMatchedAccount(null); }}
+                onClick={() => { setStep('credentials'); setOtp(''); }}
                 className="w-full py-2 rounded-xl text-sm text-gray-600 bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all"
               >
                 ← Back to Login

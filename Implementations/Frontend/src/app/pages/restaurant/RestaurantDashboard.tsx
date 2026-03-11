@@ -1,40 +1,76 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { useApp } from '../../contexts/AppContext';
-import { Package, UtensilsCrossed, Tag, ArrowLeft, TrendingUp } from 'lucide-react';
+import { Package, UtensilsCrossed, Tag, ArrowLeft, TrendingUp, Loader2 } from 'lucide-react';
+import restaurantService from '../../services/restaurant.service';
+import orderService from '../../services/order.service';
+import type { Restaurant as RestaurantData } from '../../services/restaurant.service';
+import type { Order } from '../../services/order.service';
 
 export default function RestaurantDashboard() {
   const navigate = useNavigate();
-  const { orders } = useApp();
+  const { user, logout } = useApp();
+  const restaurantId = user?.id?.toString() || '1';
 
-  // Mock restaurant data
-  const restaurantId = 'REST001';
-  const restaurantOrders = orders.filter(o => o.restaurantId === restaurantId);
-  
-  const todayRevenue = restaurantOrders
-    .filter(o => o.createdAt.toDateString() === new Date().toDateString())
-    .reduce((sum, o) => sum + o.total, 0);
-  
-  const pendingOrders = restaurantOrders.filter(o => 
-    ['pending', 'preparing'].includes(o.status)
+  const [restaurant, setRestaurant] = useState<RestaurantData | null>(null);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [menuCount, setMenuCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadDashboard = async () => {
+      setLoading(true);
+      try {
+        const [menuResult, ordersPage] = await Promise.all([
+          restaurantService.getRestaurantMenu(restaurantId).catch(() => null),
+          orderService.getRestaurantOrders(restaurantId, 0, 20).catch(() => null),
+        ]);
+
+        if (menuResult) {
+          // Handle both array and paginated response
+          const count = Array.isArray(menuResult)
+            ? menuResult.length
+            : ((menuResult as any)?.content?.length ?? (menuResult as any)?.totalElements ?? 0);
+          setMenuCount(count);
+        }
+
+        const orders: Order[] = ordersPage?.content ?? [];
+        setRecentOrders(orders);
+
+        // Try to load restaurant info by owner
+        const ownerRestaurants = await restaurantService.getOwnerRestaurants(restaurantId).catch(() => null);
+        if (ownerRestaurants && ownerRestaurants.length > 0) {
+          setRestaurant(ownerRestaurants[0]);
+        }
+      } catch {
+        // fail silently — individual errors already caught above
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
+  }, [restaurantId]);
+
+  const handleExit = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const today = new Date().toDateString();
+  const todayOrders = recentOrders.filter(o => new Date(o.createdAt).toDateString() === today);
+  const todayRevenue = todayOrders.reduce((sum, o) => sum + (o.totalAmount ?? 0), 0);
+  const pendingOrders = recentOrders.filter(o =>
+    ['PENDING', 'CONFIRMED', 'PREPARING'].includes(o.status)
   ).length;
-
-  const completedToday = restaurantOrders.filter(o => 
-    o.status === 'completed' && 
-    o.createdAt.toDateString() === new Date().toDateString()
-  ).length;
-
-  const menuItems = {
-    REST001: 4,
-    REST002: 4,
-    REST003: 3
-  }[restaurantId] || 0;
+  const completedToday = todayOrders.filter(o => o.status === 'DELIVERED').length;
 
   const cards = [
     {
       title: 'Pending Orders',
-      value: pendingOrders,
+      value: loading ? '...' : pendingOrders,
       icon: Package,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
@@ -42,14 +78,14 @@ export default function RestaurantDashboard() {
     },
     {
       title: "Today's Revenue",
-      value: `฿${todayRevenue.toFixed(0)}`,
+      value: loading ? '...' : `฿${todayRevenue.toFixed(0)}`,
       icon: TrendingUp,
       color: 'text-green-600',
       bgColor: 'bg-green-50'
     },
     {
       title: 'Menu Items',
-      value: menuItems,
+      value: loading ? '...' : menuCount,
       icon: UtensilsCrossed,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
@@ -57,7 +93,7 @@ export default function RestaurantDashboard() {
     },
     {
       title: 'Completed Today',
-      value: completedToday,
+      value: loading ? '...' : completedToday,
       icon: Tag,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50'
@@ -72,9 +108,11 @@ export default function RestaurantDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl">🍔 Restaurant Portal</h1>
-              <p className="text-sm text-gray-500">Bangkok Street Food</p>
+              <p className="text-sm text-gray-500">
+                {loading ? <Loader2 className="w-4 h-4 inline animate-spin" /> : (restaurant?.name ?? user?.name ?? 'My Restaurant')}
+              </p>
             </div>
-            <Button variant="ghost" onClick={() => navigate('/login')}>
+            <Button variant="ghost" onClick={handleExit}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Exit
             </Button>
@@ -149,19 +187,21 @@ export default function RestaurantDashboard() {
             <CardTitle>Recent Orders</CardTitle>
           </CardHeader>
           <CardContent>
-            {restaurantOrders.length === 0 ? (
+            {loading ? (
+              <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+            ) : recentOrders.length === 0 ? (
               <p className="text-center text-gray-500 py-8">No orders yet</p>
             ) : (
               <div className="space-y-4">
-                {restaurantOrders.slice(0, 5).map(order => (
+                {recentOrders.slice(0, 5).map(order => (
                   <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
-                      <p className="font-semibold">Order #{order.id}</p>
-                      <p className="text-sm text-gray-500">{order.customerName}</p>
+                      <p className="font-semibold">Order #{order.orderNumber ?? order.id}</p>
+                      <p className="text-sm text-gray-500">{order.customerId}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">฿{order.total.toFixed(2)}</p>
-                      <p className="text-sm text-gray-500 capitalize">{order.status}</p>
+                      <p className="font-semibold">฿{(order.totalAmount ?? 0).toFixed(2)}</p>
+                      <p className="text-sm text-gray-500 capitalize">{order.status?.toLowerCase()}</p>
                     </div>
                   </div>
                 ))}

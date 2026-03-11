@@ -20,29 +20,17 @@ export interface Order {
   customerId: string;
   restaurantId: string;
   riderId?: string;
-  deliveryAddress: OrderAddress;
-  items: OrderItem[];
-  subtotal: number;
-  discount: number;
-  platformFee: number;
+  deliveryAddress: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
+  orderItems?: OrderItem[];
   deliveryFee: number;
-  total: number;
+  totalAmount: number;
+  specialInstructions?: string;
   status: OrderStatus;
-  paymentMethod: PaymentMethod;
-  paymentStatus: PaymentStatus;
+  estimatedDeliveryTime?: string;
   createdAt: string;
   updatedAt: string;
-  estimatedDelivery?: string;
-  actualDelivery?: string;
-  promotionCode?: string;
-}
-
-export interface OrderAddress {
-  street: string;
-  city: string;
-  postalCode: string;
-  latitude: number;
-  longitude: number;
 }
 
 export interface OrderItem {
@@ -52,8 +40,8 @@ export interface OrderItem {
   menuItemName: string;
   quantity: number;
   unitPrice: number;
-  subtotal: number;
-  specialInstructions?: string;
+  totalPrice: number;
+  specialRequests?: string;
 }
 
 export enum OrderStatus {
@@ -62,9 +50,9 @@ export enum OrderStatus {
   PREPARING = 'PREPARING',
   READY_FOR_PICKUP = 'READY_FOR_PICKUP',
   PICKED_UP = 'PICKED_UP',
-  DELIVERING = 'DELIVERING',
   DELIVERED = 'DELIVERED',
   CANCELLED = 'CANCELLED',
+  REFUNDED = 'REFUNDED',
 }
 
 export enum PaymentMethod {
@@ -84,22 +72,24 @@ export enum PaymentStatus {
 export interface CreateOrderRequest {
   customerId: string;
   restaurantId: string;
-  deliveryAddress: OrderAddress;
-  items: CreateOrderItem[];
-  paymentMethod: PaymentMethod;
-  promotionCode?: string;
+  deliveryAddress: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
+  orderItems: CreateOrderItem[];
   specialInstructions?: string;
 }
 
 export interface CreateOrderItem {
   menuItemId: string;
+  menuItemName: string;
   quantity: number;
-  specialInstructions?: string;
+  unitPrice: number;
+  specialRequests?: string;
 }
 
 export interface UpdateOrderStatusRequest {
   newStatus: OrderStatus;
-  updatedBy: string;
+  updatedBy: number;
   notes?: string;
 }
 
@@ -248,9 +238,9 @@ class OrderService {
       [OrderStatus.PREPARING]: 'Preparing',
       [OrderStatus.READY_FOR_PICKUP]: 'Ready for Pickup',
       [OrderStatus.PICKED_UP]: 'Picked Up',
-      [OrderStatus.DELIVERING]: 'On the Way',
       [OrderStatus.DELIVERED]: 'Delivered',
       [OrderStatus.CANCELLED]: 'Cancelled',
+      [OrderStatus.REFUNDED]: 'Refunded',
     };
     
     return statusMap[status] || status;
@@ -266,9 +256,9 @@ class OrderService {
       [OrderStatus.PREPARING]: 'text-orange-600',
       [OrderStatus.READY_FOR_PICKUP]: 'text-purple-600',
       [OrderStatus.PICKED_UP]: 'text-indigo-600',
-      [OrderStatus.DELIVERING]: 'text-cyan-600',
       [OrderStatus.DELIVERED]: 'text-green-600',
       [OrderStatus.CANCELLED]: 'text-red-600',
+      [OrderStatus.REFUNDED]: 'text-gray-600',
     };
     
     return colorMap[status] || 'text-gray-600';

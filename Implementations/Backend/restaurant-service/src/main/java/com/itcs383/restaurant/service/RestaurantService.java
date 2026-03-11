@@ -7,6 +7,7 @@ import com.itcs383.common.exception.ResourceNotFoundException;
 import com.itcs383.restaurant.dto.CreateMenuCategoryRequest;
 import com.itcs383.restaurant.dto.CreateMenuItemRequest;
 import com.itcs383.restaurant.dto.CreateRestaurantRequest;
+import com.itcs383.restaurant.dto.UpdateMenuItemRequest;
 import com.itcs383.restaurant.entity.MenuCategory;
 import com.itcs383.restaurant.entity.MenuItem;
 import com.itcs383.restaurant.entity.Restaurant;
@@ -29,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * Restaurant Service
@@ -110,6 +110,7 @@ public class RestaurantService {
     /**
      * Get restaurant by ID with caching
      */
+    @SuppressWarnings("null")
     @Cacheable(value = "restaurants", key = "#id")
     @Transactional(readOnly = true)
     public RestaurantDTO getRestaurant(Long id) {
@@ -123,8 +124,8 @@ public class RestaurantService {
 
     /**
      * Get all restaurants with pagination and filtering
+     * Note: @Cacheable removed - Page objects cannot be cached with Redis
      */
-    @Cacheable(value = "restaurant-list", key = "#pageable.pageNumber + '-' + #pageable.pageSize")
     @Transactional(readOnly = true)
     public Page<RestaurantDTO> getAllRestaurants(@NonNull Pageable pageable) {
         logger.debug("Fetching all active restaurants, page: {}", pageable.getPageNumber());
@@ -171,8 +172,8 @@ public class RestaurantService {
 
     /**
      * Get restaurants by cuisine type
+     * Note: @Cacheable removed - Page objects cannot be cached with Redis
      */
-    @Cacheable(value = "restaurants-by-cuisine", key = "#cuisineType + '-' + #pageable.pageNumber")
     @Transactional(readOnly = true)
     public Page<RestaurantDTO> getRestaurantsByCuisine(@NonNull String cuisineType, @NonNull Pageable pageable) {
         logger.debug("Fetching restaurants by cuisine: {}", cuisineType);
@@ -195,7 +196,7 @@ public class RestaurantService {
         
         return restaurants.stream()
                          .map(this::convertToRestaurantDTO)
-                         .collect(Collectors.toList());
+                         .toList();
     }
 
     /**
@@ -208,7 +209,7 @@ public class RestaurantService {
         List<Restaurant> restaurants = restaurantRepository.findAllByOwnerId(ownerId);
         return restaurants.stream()
                          .map(this::convertToRestaurantDTO)
-                         .collect(Collectors.toList());
+                         .toList();
     }
 
     /**
@@ -292,6 +293,7 @@ public class RestaurantService {
     /**
      * Add menu item to restaurant
      */
+    @SuppressWarnings("null")
     @CacheEvict(value = {"restaurant-menu", "menu-items"}, allEntries = true)
     public MenuItemDTO addMenuItem(@NonNull Long restaurantId, @NonNull CreateMenuItemRequest request) {
         logger.info("Adding menu item '{}' to restaurant {}", request.getName(), restaurantId);
@@ -343,7 +345,6 @@ public class RestaurantService {
     /**
      * Get restaurant menu with caching
      */
-    @Cacheable(value = "restaurant-menu", key = "#restaurantId")
     @Transactional(readOnly = true)
     public Page<MenuItemDTO> getRestaurantMenu(@NonNull Long restaurantId, @NonNull Pageable pageable) {
         logger.debug("Fetching menu for restaurant: {}", restaurantId);
@@ -378,7 +379,7 @@ public class RestaurantService {
         
         return featuredItems.stream()
                            .map(this::convertToMenuItemDTO)
-                           .collect(Collectors.toList());
+                           .toList();
     }
 
     /**
@@ -390,6 +391,104 @@ public class RestaurantService {
         
         Page<MenuItem> menuItems = menuItemRepository.searchMenuItems(restaurantId, searchTerm, pageable);
         return menuItems.map(this::convertToMenuItemDTO);
+    }
+
+    /**
+     * Update menu item
+     */
+    @CacheEvict(value = {"restaurant-menu", "menu-items", "featured-items"}, allEntries = true)
+    public MenuItemDTO updateMenuItem(@NonNull Long restaurantId, @NonNull Long itemId,
+                                     @NonNull UpdateMenuItemRequest request) {
+        logger.info("Updating menu item {} in restaurant {}", itemId, restaurantId);
+
+        MenuItem menuItem = menuItemRepository.findById(itemId)
+            .orElseThrow(() -> new ResourceNotFoundException("MenuItem", itemId));
+
+        if (!menuItem.getRestaurant().getId().equals(restaurantId)) {
+            throw new IllegalArgumentException("Menu item does not belong to this restaurant");
+        }
+
+        applyMenuItemUpdates(menuItem, request);
+
+        MenuItem saved = menuItemRepository.save(menuItem);
+        logger.info("Menu item {} updated successfully", itemId);
+        return convertToMenuItemDTO(saved);
+    }
+
+    private void applyMenuItemUpdates(MenuItem menuItem, UpdateMenuItemRequest request) {
+        if (request.getName() != null) menuItem.setName(request.getName());
+        if (request.getDescription() != null) menuItem.setDescription(request.getDescription());
+        if (request.getPrice() != null) menuItem.setPrice(request.getPrice());
+        if (request.getImageUrl() != null) menuItem.setImageUrl(request.getImageUrl());
+        if (request.getIsAvailable() != null) menuItem.setIsAvailable(request.getIsAvailable());
+        if (request.getIsFeatured() != null) menuItem.setIsFeatured(request.getIsFeatured());
+        if (request.getIsVegetarian() != null) menuItem.setIsVegetarian(request.getIsVegetarian());
+        if (request.getIsVegan() != null) menuItem.setIsVegan(request.getIsVegan());
+        if (request.getIsGlutenFree() != null) menuItem.setIsGlutenFree(request.getIsGlutenFree());
+        if (request.getIsSpicy() != null) menuItem.setIsSpicy(request.getIsSpicy());
+        if (request.getPreparationTime() != null) menuItem.setPreparationTime(request.getPreparationTime());
+        if (request.getCalories() != null) menuItem.setCalories(request.getCalories());
+        if (request.getIngredients() != null) menuItem.setIngredients(request.getIngredients());
+        if (request.getAllergens() != null) menuItem.setAllergens(request.getAllergens());
+        if (request.getDisplayOrder() != null) menuItem.setDisplayOrder(request.getDisplayOrder());
+        applyMenuItemCategory(menuItem, request.getCategoryId());
+    }
+
+    private void applyMenuItemCategory(MenuItem menuItem, Long categoryId) {
+        if (categoryId == null) return;
+        MenuCategory category = menuCategoryRepository.findById(categoryId)
+            .orElseThrow(() -> new ResourceNotFoundException(RESOURCE_MENU_CATEGORY, categoryId));
+        menuItem.setCategory(category);
+    }
+
+    /**
+     * Delete menu item
+     */
+    @CacheEvict(value = {"restaurant-menu", "menu-items", "featured-items"}, allEntries = true)
+    public void deleteMenuItem(@NonNull Long restaurantId, @NonNull Long itemId) {
+        logger.info("Deleting menu item {} from restaurant {}", itemId, restaurantId);
+
+        MenuItem menuItem = menuItemRepository.findById(itemId)
+            .orElseThrow(() -> new ResourceNotFoundException("MenuItem", itemId));
+
+        if (!menuItem.getRestaurant().getId().equals(restaurantId)) {
+            throw new IllegalArgumentException("Menu item does not belong to this restaurant");
+        }
+
+        menuItemRepository.delete(menuItem);
+        logger.info("Menu item {} deleted successfully", itemId);
+    }
+
+    /**
+     * Delete restaurant
+     */
+    @CacheEvict(value = {"restaurants", "restaurant-list", "restaurant-menu", "menu-categories"}, allEntries = true)
+    public void deleteRestaurant(@NonNull Long id) {
+        logger.info("Deleting restaurant {}", id);
+
+        Restaurant restaurant = restaurantRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException(RESOURCE_RESTAURANT, id));
+
+        restaurantRepository.delete(restaurant);
+        logger.info("Restaurant {} deleted successfully", id);
+    }
+
+    /**
+     * Delete menu category
+     */
+    @CacheEvict(value = {"menu-categories"}, allEntries = true)
+    public void deleteMenuCategory(@NonNull Long restaurantId, @NonNull Long categoryId) {
+        logger.info("Deleting category {} from restaurant {}", categoryId, restaurantId);
+
+        MenuCategory category = menuCategoryRepository.findById(categoryId)
+            .orElseThrow(() -> new ResourceNotFoundException(RESOURCE_MENU_CATEGORY, categoryId));
+
+        if (!category.getRestaurant().getId().equals(restaurantId)) {
+            throw new IllegalArgumentException("Category does not belong to this restaurant");
+        }
+
+        menuCategoryRepository.delete(category);
+        logger.info("Category {} deleted successfully", categoryId);
     }
 
     // ==================== CATEGORY MANAGEMENT ====================
@@ -452,7 +551,20 @@ public class RestaurantService {
         
         return pendingRestaurants.stream()
                                 .map(this::convertToRestaurantDTO)
-                                .collect(Collectors.toList());
+                                .toList();
+    }
+
+    /**
+     * Get admin stats: total and active restaurant counts
+     */
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> getRestaurantStats() {
+        long totalRestaurants = restaurantRepository.count();
+        long activeRestaurants = restaurantRepository.countByStatus(RestaurantStatus.ACTIVE);
+        return java.util.Map.of(
+            "totalRestaurants", totalRestaurants,
+            "activeRestaurants", activeRestaurants
+        );
     }
 
     // ==================== PRIVATE HELPER METHODS ====================

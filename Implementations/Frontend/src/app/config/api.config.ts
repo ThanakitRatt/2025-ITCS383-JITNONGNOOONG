@@ -29,9 +29,16 @@ export const API_ENDPOINTS = {
     SEARCH: `/api/${API_VERSION}/restaurants/search`,
     BY_CUISINE: (cuisine: string) => `/api/${API_VERSION}/restaurants/cuisine/${cuisine}`,
     TOP_RATED: `/api/${API_VERSION}/restaurants/top-rated`,
+    BY_OWNER: (ownerId: string) => `/api/${API_VERSION}/restaurants/owner/${ownerId}`,
+    STATUS: (id: string) => `/api/${API_VERSION}/restaurants/${id}/status`,
+    AVAILABILITY: (id: string) => `/api/${API_VERSION}/restaurants/${id}/availability`,
     MENU: (restaurantId: string) => `/api/${API_VERSION}/restaurants/${restaurantId}/menu`,
     MENU_ITEM: (restaurantId: string, itemId: string) => 
       `/api/${API_VERSION}/restaurants/${restaurantId}/menu/${itemId}`,
+    MENU_SEARCH: (restaurantId: string) => `/api/${API_VERSION}/restaurants/${restaurantId}/menu/search`,
+    CATEGORIES: (restaurantId: string) => `/api/${API_VERSION}/restaurants/${restaurantId}/categories`,
+    CATEGORY: (restaurantId: string, categoryId: string) => 
+      `/api/${API_VERSION}/restaurants/${restaurantId}/categories/${categoryId}`,
   },
   
   // Orders
@@ -43,6 +50,7 @@ export const API_ENDPOINTS = {
     RESTAURANT: (restaurantId: string) => `/api/${API_VERSION}/orders/restaurant/${restaurantId}`,
     STATUS: (id: string) => `/api/${API_VERSION}/orders/${id}/status`,
     CANCEL: (id: string) => `/api/${API_VERSION}/orders/${id}`,
+    ADMIN_STATS: `/api/${API_VERSION}/orders/admin/stats`,
   },
   
   // Payments
@@ -68,6 +76,12 @@ export const API_ENDPOINTS = {
     PROFILE: `/api/${API_VERSION}/customers/profile`,
     ADDRESSES: `/api/${API_VERSION}/customers/addresses`,
     PAYMENT_METHODS: `/api/${API_VERSION}/customers/payment-methods`,
+  },
+
+  // Admin
+  ADMIN: {
+    ORDER_STATS: `/api/${API_VERSION}/orders/admin/stats`,
+    RESTAURANT_STATS: `/api/${API_VERSION}/restaurants/stats`,
   },
 };
 

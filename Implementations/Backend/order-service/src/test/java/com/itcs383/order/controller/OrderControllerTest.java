@@ -41,6 +41,7 @@ import com.itcs383.order.service.OrderService;
 @WebMvcTest(OrderController.class)
 @AutoConfigureDataJpa
 @ActiveProfiles("test")
+@SuppressWarnings("null")
 class OrderControllerTest {
 
     @Autowired

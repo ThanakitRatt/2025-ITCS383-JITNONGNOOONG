@@ -1,26 +1,42 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
 import { useApp } from '../../contexts/AppContext';
-import { ArrowLeft, Package, ChefHat, Bike, CheckCircle, MapPin } from 'lucide-react';
+import { ArrowLeft, Package, ChefHat, Bike, CheckCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import orderService, { Order, OrderStatus } from '../../services/order.service';
 
-const statusConfig = {
-  pending: { label: 'Order Placed', icon: Package, color: 'bg-blue-500', progress: 25 },
-  preparing: { label: 'Preparing', icon: ChefHat, color: 'bg-orange-500', progress: 50 },
-  ready: { label: 'Ready for Pickup', icon: Package, color: 'bg-purple-500', progress: 60 },
-  delivering: { label: 'On the Way', icon: Bike, color: 'bg-green-500', progress: 75 },
-  completed: { label: 'Delivered', icon: CheckCircle, color: 'bg-green-600', progress: 100 },
-  cancelled: { label: 'Cancelled', icon: Package, color: 'bg-red-500', progress: 0 }
+const statusConfig: Record<OrderStatus, { label: string; icon: typeof Package; color: string; progress: number }> = {
+  [OrderStatus.PENDING]: { label: 'Order Placed', icon: Package, color: 'bg-blue-500', progress: 20 },
+  [OrderStatus.CONFIRMED]: { label: 'Confirmed', icon: Package, color: 'bg-blue-600', progress: 35 },
+  [OrderStatus.PREPARING]: { label: 'Preparing', icon: ChefHat, color: 'bg-orange-500', progress: 50 },
+  [OrderStatus.READY_FOR_PICKUP]: { label: 'Ready for Pickup', icon: Package, color: 'bg-purple-500', progress: 65 },
+  [OrderStatus.PICKED_UP]: { label: 'Picked Up', icon: Bike, color: 'bg-indigo-500', progress: 75 },
+  [OrderStatus.DELIVERED]: { label: 'Delivered', icon: CheckCircle, color: 'bg-green-600', progress: 100 },
+  [OrderStatus.CANCELLED]: { label: 'Cancelled', icon: Package, color: 'bg-red-500', progress: 0 },
+  [OrderStatus.REFUNDED]: { label: 'Refunded', icon: Package, color: 'bg-gray-500', progress: 0 },
 };
 
 export default function OrderTracking() {
   const navigate = useNavigate();
-  const { orders, user } = useApp();
+  const { user } = useApp();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const myOrders = orders.filter(order => order.customerId === user?.id);
+  useEffect(() => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    orderService
+      .getCustomerOrders(user.id.toString())
+      .then(response => setOrders(response.content ?? []))
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false));
+  }, [user?.id]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -39,7 +55,12 @@ export default function OrderTracking() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {myOrders.length === 0 ? (
+        {loading && (
+          <div className="flex justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          </div>
+        )}
+        {!loading && orders.length === 0 && (
           <Card>
             <CardContent className="text-center py-12">
               <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -49,10 +70,11 @@ export default function OrderTracking() {
               </Button>
             </CardContent>
           </Card>
-        ) : (
+        )}
+        {!loading && orders.length > 0 && (
           <div className="space-y-6">
-            {myOrders.map(order => {
-              const config = statusConfig[order.status];
+            {orders.map(order => {
+              const config = statusConfig[order.status] ?? statusConfig[OrderStatus.PENDING];
               const Icon = config.icon;
               
               return (
@@ -60,9 +82,9 @@ export default function OrderTracking() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle className="text-lg">{order.restaurantName}</CardTitle>
+                        <CardTitle className="text-lg">Order #{order.orderNumber}</CardTitle>
                         <p className="text-sm text-gray-500">
-                          {format(order.createdAt, 'PPp')}
+                          {format(new Date(order.createdAt), 'PPp')}
                         </p>
                       </div>
                       <Badge className={config.color}>{config.label}</Badge>
@@ -81,48 +103,27 @@ export default function OrderTracking() {
                     {/* Order Items */}
                     <div className="space-y-2">
                       <p className="text-sm font-semibold">Items:</p>
-                      {order.items.map((item, idx) => (
-                        <div key={idx} className="flex justify-between text-sm">
-                          <span>{item.name} × {item.quantity}</span>
-                          <span>฿{item.price * item.quantity}</span>
+                      {(order.orderItems ?? []).map(item => (
+                        <div key={item.id} className="flex justify-between text-sm">
+                          <span>{item.menuItemName} × {item.quantity}</span>
+                          <span>฿{item.totalPrice.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
 
                     {/* Delivery Info */}
                     <div className="pt-4 border-t">
-                      <div className="flex items-start gap-2 text-sm mb-2">
-                        <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                        <span>{order.deliveryAddress}</span>
-                      </div>
-                      {order.riderName && (
-                        <p className="text-sm text-gray-600">
-                          Rider: {order.riderName}
-                        </p>
-                      )}
+                      <p className="text-sm text-gray-600">
+                        {order.deliveryAddress}
+                      </p>
                     </div>
 
-                    {/* Total & Actions */}
-                    <div className="pt-4 border-t flex items-center justify-between">
+                    {/* Total */}
+                    <div className="pt-2 border-t flex items-center justify-between">
                       <div>
                         <p className="text-sm text-gray-500">Total Amount</p>
-                        <p className="text-lg font-semibold">฿{order.total.toFixed(2)}</p>
-                        <p className="text-xs text-gray-500 capitalize">
-                          Payment: {order.paymentMethod.replace('-', ' ')}
-                        </p>
+                        <p className="text-lg font-semibold">฿{(order.totalAmount ?? 0).toFixed(2)}</p>
                       </div>
-                      {order.status === 'completed' && !order.riderRating && (
-                        <Button 
-                          onClick={() => navigate(`/customer/rate/${order.id}`)}
-                        >
-                          Rate Rider
-                        </Button>
-                      )}
-                      {order.riderRating && (
-                        <Badge variant="outline" className="text-green-600">
-                          ✓ Rated
-                        </Badge>
-                      )}
                     </div>
                   </CardContent>
                 </Card>

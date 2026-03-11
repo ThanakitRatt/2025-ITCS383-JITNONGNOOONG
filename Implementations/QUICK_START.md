@@ -2,23 +2,39 @@
 
 ## Prerequisites
 - Java 17+ installed: `java -version`
-- MySQL running: `mysql -u root -p`
-- Node.js running frontend: check if `npm` works
+- PostgreSQL running: `psql --version`
+- Node.js installed: `node --version`
 
 ## Step 1: Database Setup (1 min)
 ```bash
-mysql -u root -p
-CREATE DATABASE mharruengsang;
-USE mharruengsang;
-EXIT;
-```
+# Create databases for microservices
+psql -U postgres
 
-## Step 2: Configure Backend (1 min)
-Edit `Backend/src/main/resources/application.yml`:
+CREATE DATABASE mhar_restaurants;
+CREATE DATABASE mhar_orders;
+CREATE USER mhar_user WITH PASSWORD 'mhar_password';
+GRANT ALL PRIVILEGES ON DATABAOptional
+
+Default configuration works out of the box with:
+- PostgreSQL: `localhost:5432`
+- Databases: `mhar_restaurants`, `mhar_orders`
+- User: `mhar_user` / Password: `mhar_password`
+
+**To customize**, edit `Backend/*/src/main/resources/application.yml`:
 
 ```yaml
 spring:
   datasource:
+    url: jdbc:postgresql://localhost:5432/mhar_restaurants
+    username: ${DB_USERNAME:mhar_user}
+    password: ${DB_PASSWORD:mhar_password}
+```
+
+**Set environment variables:**
+```bash
+export DB_USERNAME=your_username
+export DB_PASSWORD=your_password
+```
     url: jdbc:mysql://localhost:3306/mharruengsang?useSSL=false&serverTimezone=UTC
     username: root
     password: YOUR_MYSQL_ROOT_PASSWORD  # ← Replace with your MySQL root password
@@ -31,33 +47,47 @@ spring:
 - If using WAMP/MAMP: check your setup documentation
 
 ## Step 3: Run Backend (2 min)
+
+### Option A: Quick Start (One Command) ⭐ Recommended
 ```bash
-cd Backend
-mvn clean install
+cd Implementations/Backend
+./start-all.sh
+```
+
+This starts all microservices in one terminal:
+- 🌐 API Gateway: `http://localhost:8080`
+- 🍽️ Restaurant Service: `http://localhost:8082`
+- 📦 Order Service: `http://localhost:8081`
+
+**To stop all services:**
+```bash
+./stop-all.sh
+```
+
+### Option B: Manual Start (Separate Terminals)
+```bash
+# Terminal 1 - Restaurant Service
+cd Implementations/Backend/restaurant-service
 mvn spring-boot:run
-```
 
-**Expected output:**
-```
-Tomcat started on port(s): 8080
-Started FoodDeliveryApplication in 3.456 seconds
-```
+# Terminal 2 - Order Service  
+cd Implementations/Backend/order-service
+mvn spring-boot:run
 
-✅ Backend running at: `http://localhost:8080/api`
+# Terminal 3 - API Gateway
+cd Implementations/Backend/api-gateway
+mvn spFrontend/src/app/services/api.config.ts` or similar:
 
+```javascript
+const api = axios.create({
+  baseURL: 'http://localhost:8080/api',  // ← API Gateway URL
 ## Step 4: Update Frontend API (30 sec)
 Edit `Implementation/src/api.js`:
 
 ```javascript
 const api = axios.create({
   baseURL: 'http://localhost:8080/api',  // ← Change this line
-  timeout: 5000,
-})
-```
-
-## Step 5: Run Frontend (30 sec)
-```bash
-cd Implementation
+  timeout: 5000,s/Frontend
 npm install
 npm run dev
 ```
@@ -66,38 +96,112 @@ npm run dev
 
 ---
 
-## Test It Out!
+## Using the Application
 
-### 1. Go to Checkout
-- http://localhost:5173/customer/checkout
-- Click "Checkout"
+### Mock Authentication (Email OTP)
 
-### 2. Test Credit Card Payment
-```
-Card: 4242 4242 4242 4242
-Expiry: 12/25
-CVC: 123
-```
+**Currently uses email-based OTP** (free method) instead of SMS. When you log in:
 
-### 3. See Payment Processed
-- Response shows payment confirmed
-- Order status updated to PAID
-- ✅ Success!
+1. **Login Step**: Enter credentials → OTP sent to email message appears
+2. **OTP Step**: Enter any 6-digit code (e.g., `123456`)
+3. **Success**: Redirected to your dashboard
+
+**Demo Accounts** (use any password):
+- `customer@foodexpress.com` → Customer Dashboard
+- `restaurant@foodexpress.com` → Restaurant Dashboard  
+- `rider@foodexpress.com` → Rider Dashboard
+- `admin@foodexpress.com` → Admin Dashboard
+
+**Note**: Auth service (port 8083) is not yet implemented, so frontend uses mock authentication fallback.
 
 ---
 
-## Test Other Features
+## Test It Out!
 
-### Test Rider Location Update
+### 1. Test Restaurant Service
 ```bash
-curl -X POST "http://localhost:8080/api/riders/1/location?latitude=13.7563&longitude=100.5018&status=AVAILABLE"
+curl http://localhost:8082/api/restaurants
 ```
 
-### Test Promotion
+### 2. Test Through API Gateway
 ```bash
-curl -X GET "http://localhost:8080/api/promotions/code/SUMMER20"
+curl http://localhost:8080/api/restaurants
 ```
 
+### 3. Check Service Health
+```bash
+# Restaurant Service
+curl http://localhost:8082/actuator/health
+
+# Order Service
+curl http://localhost:8081/actuator/health
+
+# AAPI Endpoints
+
+### Restaurant Service (Port 8082)
+```bash
+# Get all restaurants
+curl http://localhost:8082/api/restaurants
+
+# Get restaurant by ID
+curl http://localhost:8082/api/restaurants/1
+
+# Create restaurant
+curl -X POST http://localhost:8082/api/restaurants \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Test Restaurant",
+    "cuisineType": "THAI",
+    "phoneNumber": "+66-2-123-4567",
+    "email": "test@example.com",
+    "address": "123 Test St",
+    "latitude": 13.7563,
+    "longitude": 100.5018,
+    "deliveryFee": 25.00,
+    "minimumOrderAmount": 100.00,
+    "openingTime": "09:00",
+    "closingTime": "22:00",
+    "estimatedDeliveryTime": 30,
+    "ownerId": 1
+  }'
+```/8081/8082 already in use"
+```bash
+# Check what's using the port
+lsof -i :8080
+
+# Kill and restart
+./stop-all.sh
+./start-all.sh
+```
+
+### "Connection refused: PostgreSQL"
+```bash
+# Start PostgreSQL
+brew services start postgresql  # macOS
+sudo service postgresql start   # Linux
+
+# Check if running
+psql -U postgres -c "SELECT version();"
+```
+
+### "Unable to find a suitable main class"
+```bash
+# Don't run from parent directory
+# Always use ./start-all.sh or go to individual service directory
+cd restaurant-service
+mvn spring-boot:run
+```
+
+### Services fail to start
+```bash
+# Check logs
+tail -f logs/restaurant-service.log
+tail -f logs/order-service.log
+tail -f logs/api-gateway.log
+
+# Rebuild if needed
+mvn clean install
+```
 ### Test Rating
 ```bash
 curl -X POST "http://localhost:8080/api/ratings?orderId=1&customerId=1" \
@@ -160,41 +264,68 @@ mysqld  # Windows
 └── BACKEND_SUMMARY.md          # What's been built
 ```
 
----
-
-## API Quick Reference
-
-### Payment
+--- :5173)
+         ↓ HTTP
+    API GATEWAY (:8080)
+    ┌─────┴─────┐
+    ↓           ↓
+RESTAURANT   ORDER
+SERVICE      SERVICE
+(:8082)      (:8081)
+    ↓           ↓
+PostgreSQL  PostgreSQL
+(mhar_restaurants) (mhar_orders)
 ```
-POST /api/payments/initiate        - Start payment
-GET  /api/payments/{id}/verify     - Check status
-POST /api/payments/{orderId}/promptpay - Show QR code
-```
 
-### Riders
-```
-POST /api/riders/{id}/location           - Update GPS
-POST /api/riders/{id}/accept-order/{oid} - Accept delivery
+**Microservices Architecture:**
+- Each service has its own database
+- API Gateway routes requests to services
+- Services communicate via REST APIs
+- Redis caching (optional, disabled in tests)T /api/riders/{id}/accept-order/{oid} - Accept delivery
 POST /api/riders/{id}/confirm-delivery/{oid} - Complete
 ```
+**Restaurant Service Database** (`mhar_restaurants`):
+- `restaurants` - Restaurant information
+- `menu_categories` - Menu category organization
+- `menu_items` - Restaurant menu items
 
-### Promotions
-```
-GET  /api/promotions/{id}             - Get promotion
-POST /api/promotions/apply            - Apply discount code
-```
-
+**Order Service Database** (`mhar_orders`):
+- `orders` - Order records
+- `order_items` - Individual items in orders
+- `order_status_history` - Order status tracking
 ### Ratings
 ```
 POST /api/ratings       - Submit rating
-GET  /api/ratings/rider/{id}/average - Get avg rating
-```
-
-See **API_REFERENCE.md** for full documentation.
+GET  /PostgreSQL installed and running
+- [ ] Databases created: `mhar_restaurants`, `mhar_orders`
+- [ ] Backend built: `mvn clean install` (from Backend directory)
+- [ ] All services started: `./start-all.sh`
+- [ ] Restaurant Service running: `http://localhost:8082`
+- [ ] Order Service running: `http://localhost:8081`
+- [ ] API Gateway running: `http://localhost:8080`
+- [ ] Frontend configured to use API Gateway
+- [ ] Frontend running: `http://localhost:5173`
+- [ ] Test endpoints work: `curl http://localhost:8080/api/restaurants`
+- [ ] ✅ Complete!
 
 ---
 
-## Next Steps
+## Viewing Logs
+
+All service logs are saved to `Backend/logs/`:
+
+```bash
+# View all logs simultaneously
+tail -f logs/*.log
+
+# View specific service
+tail -f logs/restaurant-service.log
+tail -f logs/order-service.log
+tail -f logs/api-gateway.log
+
+# Search for errors
+grep -i error logs/*.log
+```
 
 1. ✅ Read `PAYMENT_FLOW.md` to understand architecture
 2. ✅ Check `INTEGRATION_GUIDE.md` for detailed integration

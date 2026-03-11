@@ -77,6 +77,12 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :since AND o.status = :status")
     Long countByStatusSince(@Param("status") OrderStatus status, @Param("since") LocalDateTime since);
 
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.createdAt >= :since AND o.status = :status")
+    java.math.BigDecimal sumTotalAmountByStatusSince(@Param("status") OrderStatus status, @Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :since")
+    Long countAllSince(@Param("since") LocalDateTime since);
+
     // Advanced queries for business intelligence
     @Query("SELECT o FROM Order o WHERE o.estimatedDeliveryTime < :currentTime AND o.status IN :activeStatuses")
     List<Order> findDelayedOrders(@Param("currentTime") LocalDateTime currentTime, 

@@ -1,11 +1,12 @@
 package com.itcs383.restaurant.integration;
 
 import java.math.BigDecimal;
+import java.time.LocalTime;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureWebMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -15,9 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.WebApplicationContext;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itcs383.common.enums.RestaurantStatus;
@@ -25,14 +24,15 @@ import com.itcs383.restaurant.dto.CreateRestaurantRequest;
 import com.itcs383.restaurant.entity.Restaurant;
 import com.itcs383.restaurant.repository.RestaurantRepository;
 
-@SpringBootTest
-@AutoConfigureWebMvc
+@SpringBootTest(properties = "spring.cache.type=none")
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
+@SuppressWarnings("null")
 class RestaurantIntegrationTest {
 
     @Autowired
-    private WebApplicationContext webApplicationContext;
+    private MockMvc mockMvc;
 
     @Autowired
     private RestaurantRepository restaurantRepository;
@@ -40,12 +40,9 @@ class RestaurantIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private MockMvc mockMvc;
-
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(webApplicationContext).build();
-        restaurantRepository.deleteAll();
+       restaurantRepository.deleteAll();
     }
 
     @Test
@@ -61,6 +58,9 @@ class RestaurantIntegrationTest {
                 .longitude(100.5018)
                 .deliveryFee(new BigDecimal("25.00"))
                 .minimumOrderAmount(new BigDecimal("100.00"))
+                .openingTime(LocalTime.of(9, 0))
+                .closingTime(LocalTime.of(22, 0))
+                .estimatedDeliveryTime(30)
                 .ownerId(1L)
                 .build();
 
@@ -95,6 +95,9 @@ class RestaurantIntegrationTest {
         restaurant.setLongitude(new BigDecimal("100.5418"));
         restaurant.setDeliveryFee(new BigDecimal("30.00"));
         restaurant.setMinimumOrderAmount(new BigDecimal("150.00"));
+        restaurant.setOpeningTime(LocalTime.of(9, 0));
+        restaurant.setClosingTime(LocalTime.of(22, 0));
+        restaurant.setEstimatedDeliveryTime(45);
         restaurant.setStatus(RestaurantStatus.PENDING);
         restaurant.setAcceptsOrders(false);
         restaurant.setOwnerId(1L);
@@ -131,6 +134,14 @@ class RestaurantIntegrationTest {
                 .phoneNumber("+66-2-234-5678")
                 .email("updated@test.com")
                 .address("456 Updated Test St")
+                .latitude(13.7563)
+                .longitude(100.5018)
+                .deliveryFee(new BigDecimal("30.00"))
+                .minimumOrderAmount(new BigDecimal("150.00"))
+                .openingTime(LocalTime.of(10, 0))
+                .closingTime(LocalTime.of(23, 0))
+                .estimatedDeliveryTime(45)
+                .ownerId(1L)
                 .build();
 
         mockMvc.perform(put("/api/restaurants/" + restaurant.getId())
@@ -219,8 +230,12 @@ class RestaurantIntegrationTest {
         restaurant.setLongitude(new BigDecimal("100.5018"));
         restaurant.setDeliveryFee(new BigDecimal("25.00"));
         restaurant.setMinimumOrderAmount(new BigDecimal("100.00"));
+        restaurant.setOpeningTime(LocalTime.of(9, 0));
+        restaurant.setClosingTime(LocalTime.of(22, 0));
+        restaurant.setEstimatedDeliveryTime(30);
         restaurant.setStatus(status);
-        restaurant.setAcceptsOrders(true);
+        restaurant.setIsActive(status == RestaurantStatus.APPROVED);
+        restaurant.setAcceptsOrders(status == RestaurantStatus.APPROVED);
         restaurant.setAverageRating(new BigDecimal("4.0"));
         restaurant.setTotalReviews(10);
         restaurant.setOwnerId(1L);
