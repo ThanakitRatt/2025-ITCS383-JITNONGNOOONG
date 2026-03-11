@@ -181,6 +181,8 @@ generated-test-sources/
 application*.log
 spring*.log
 
+setup.sh
+
 # ========================================
 # Project Specific - MharRuengSang
 # ========================================
