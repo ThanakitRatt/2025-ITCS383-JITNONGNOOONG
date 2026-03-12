@@ -40,10 +40,12 @@ public class OrderService {
     private static final String RESOURCE_ORDER = "Order";
 
     private final OrderRepository orderRepository;
+    private final RiderPaymentService riderPaymentService;
 
     @Autowired
-    public OrderService(OrderRepository orderRepository) {
+    public OrderService(OrderRepository orderRepository, RiderPaymentService riderPaymentService) {
         this.orderRepository = orderRepository;
+        this.riderPaymentService = riderPaymentService;
     }
 
     /**
@@ -155,11 +157,31 @@ public class OrderService {
                 throw new OrderStatusException(order.getStatus(), request.getNewStatus());
             }
 
+            // Assign rider when they pick up the order
+            if (request.getNewStatus() == OrderStatus.PICKED_UP && order.getRiderId() == null) {
+                order.setRiderId(request.getUpdatedBy());
+            }
+
             // Update status with history tracking
             order.updateStatus(request.getNewStatus(), request.getUpdatedBy(), request.getNotes());
 
             // Save updated order
             Order updatedOrder = orderRepository.save(order);
+
+            // Credit rider earnings when order is delivered
+            if (request.getNewStatus() == OrderStatus.DELIVERED && updatedOrder.getRiderId() != null) {
+                boolean paymentSuccess = riderPaymentService.creditRiderEarnings(
+                    updatedOrder.getRiderId(), 
+                    updatedOrder.getDeliveryFee()
+                );
+                if (paymentSuccess) {
+                    logger.info("Rider {} credited with delivery fee {} for order {}", 
+                               updatedOrder.getRiderId(), updatedOrder.getDeliveryFee(), orderId);
+                } else {
+                    logger.warn("Failed to credit rider {} for order {}", 
+                               updatedOrder.getRiderId(), orderId);
+                }
+            }
 
             logger.info("Order {} status updated to {}", orderId, request.getNewStatus());
             return convertToDTO(updatedOrder);
@@ -215,6 +237,28 @@ public class OrderService {
         
         Page<Order> orders = orderRepository.findByRestaurantIdAndStatusOrderByCreatedAtAsc(
             restaurantId, status, pageable);
+        return orders.map(this::convertToDTO);
+    }
+
+    /**
+     * Get orders assigned to a specific rider
+     */
+    @Transactional(readOnly = true)
+    public Page<OrderDTO> getRiderOrders(Long riderId, Pageable pageable) {
+        logger.debug("Fetching orders for rider: {}", riderId);
+        Page<Order> orders = orderRepository.findByRiderIdOrderByCreatedAtDesc(riderId, pageable);
+        return orders.map(this::convertToDTO);
+    }
+
+    /**
+     * Get available orders for riders (READY_FOR_PICKUP and no assigned rider)
+     */
+    @Transactional(readOnly = true)
+    public Page<OrderDTO> getAvailableOrdersForRiders(Pageable pageable) {
+        logger.debug("Fetching available orders for riders");
+        
+        Page<Order> orders = orderRepository.findAvailableOrdersForRiders(
+            OrderStatus.READY_FOR_PICKUP, pageable);
         return orders.map(this::convertToDTO);
     }
 

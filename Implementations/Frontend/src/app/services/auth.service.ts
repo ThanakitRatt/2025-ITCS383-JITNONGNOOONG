@@ -58,6 +58,24 @@ const MOCK_USERS: Record<string, { name: string; role: string; id: number }> = {
 };
 
 /**
+ * Helper function to save authentication data to localStorage
+ */
+const saveAuthData = (token?: string, refreshToken?: string, user?: UserDTO): void => {
+  if (token) {
+    localStorage.setItem('authToken', token);
+  }
+  if (refreshToken) {
+    localStorage.setItem('refreshToken', refreshToken);
+  }
+  if (user) {
+    localStorage.setItem('userId', user.id.toString());
+    localStorage.setItem('userRole', user.role);
+    localStorage.setItem('userEmail', user.email);
+    localStorage.setItem('userName', user.name);
+  }
+};
+
+/**
  * Login with email and password (triggers OTP)
  * 
  * TEMPORARY: Mock authentication when backend is unavailable
@@ -105,19 +123,7 @@ export const verifyOtp = async (otpData: OtpRequest): Promise<LoginResponse> => 
     // Save tokens and user info to localStorage
     if (response.data.success && response.data.data) {
       const { token, refreshToken, user } = response.data.data;
-      
-      if (token) {
-        localStorage.setItem('authToken', token);
-      }
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken);
-      }
-      if (user) {
-        localStorage.setItem('userId', user.id.toString());
-        localStorage.setItem('userRole', user.role);
-        localStorage.setItem('userEmail', user.email);
-        localStorage.setItem('userName', user.name);
-      }
+      saveAuthData(token, refreshToken, user);
     }
     
     return response.data;
@@ -134,12 +140,14 @@ export const verifyOtp = async (otpData: OtpRequest): Promise<LoginResponse> => 
         const userId = mockUser.id;
         
         // Save mock tokens
-        localStorage.setItem('authToken', mockToken);
-        localStorage.setItem('refreshToken', mockToken);
-        localStorage.setItem('userId', userId.toString());
-        localStorage.setItem('userRole', mockUser.role);
-        localStorage.setItem('userEmail', otpData.email);
-        localStorage.setItem('userName', mockUser.name);
+        const mockUserData: UserDTO = {
+          id: userId,
+          email: otpData.email,
+          name: mockUser.name,
+          role: mockUser.role,
+          phoneNumber: '+66-12-345-6789'
+        };
+        saveAuthData(mockToken, mockToken, mockUserData);
         
         return {
           success: true,
@@ -173,19 +181,7 @@ export const register = async (userData: RegisterRequest): Promise<LoginResponse
   // Save tokens and user info to localStorage
   if (response.data.success && response.data.data) {
     const { token, refreshToken, user } = response.data.data;
-    
-    if (token) {
-      localStorage.setItem('authToken', token);
-    }
-    if (refreshToken) {
-      localStorage.setItem('refreshToken', refreshToken);
-    }
-    if (user) {
-      localStorage.setItem('userId', user.id.toString());
-      localStorage.setItem('userRole', user.role);
-      localStorage.setItem('userEmail', user.email);
-      localStorage.setItem('userName', user.name);
-    }
+    saveAuthData(token, refreshToken, user);
   }
   
   return response.data;

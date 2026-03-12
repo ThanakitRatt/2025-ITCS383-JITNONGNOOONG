@@ -26,7 +26,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Restaurant Controller
@@ -41,6 +44,7 @@ public class RestaurantController {
 
     private static final Logger logger = LoggerFactory.getLogger(RestaurantController.class);
     private static final String MSG_RESTAURANT_NOT_FOUND = "Restaurant not found";
+    private static final String SORT_DISPLAY_ORDER = "displayOrder";
 
     private final RestaurantService restaurantService;
 
@@ -325,7 +329,7 @@ public class RestaurantController {
         logger.debug("Getting menu for restaurant: {}", id);
         
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("displayOrder", "name"));
+            Pageable pageable = PageRequest.of(page, size, Sort.by(SORT_DISPLAY_ORDER, "name"));
             Page<MenuItemDTO> menuItems = restaurantService.getRestaurantMenu(id, pageable);
             return ResponseEntity.ok(ApiResponse.success(menuItems));
         } catch (Exception e) {
@@ -494,14 +498,31 @@ public class RestaurantController {
      */
     @GetMapping("/{id}/categories")
     @Operation(summary = "Get menu categories", description = "Retrieve menu categories for restaurant")
-    public ResponseEntity<ApiResponse<List<MenuCategory>>> getRestaurantCategories(
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getRestaurantCategories(
             @Parameter(description = "Restaurant ID") @PathVariable Long id) {
         
         logger.debug("Getting categories for restaurant: {}", id);
         
         try {
             List<MenuCategory> categories = restaurantService.getRestaurantCategories(id);
-            return ResponseEntity.ok(ApiResponse.success(categories));
+            
+            // Convert to simple DTOs to avoid lazy loading issues
+            List<Map<String, Object>> categoryDtos = categories.stream()
+                .map(cat -> {
+                    Map<String, Object> dto = new HashMap<>();
+                    dto.put("id", cat.getId());
+                    dto.put("name", cat.getName());
+                    dto.put("description", cat.getDescription());
+                    dto.put("isActive", cat.getIsActive());
+                    dto.put(SORT_DISPLAY_ORDER, cat.getDisplayOrder());
+                    dto.put("imageUrl", cat.getImageUrl());
+                    dto.put("createdAt", cat.getCreatedAt());
+                    dto.put("updatedAt", cat.getUpdatedAt());
+                    return dto;
+                })
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(ApiResponse.success(categoryDtos));
         } catch (Exception e) {
             logger.error("Error fetching restaurant categories: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -550,7 +571,7 @@ public class RestaurantController {
         logger.debug("Getting menu items for category: {}", categoryId);
         
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("displayOrder", "name"));
+            Pageable pageable = PageRequest.of(page, size, Sort.by(SORT_DISPLAY_ORDER, "name"));
             Page<MenuItemDTO> menuItems = restaurantService.getMenuItemsByCategory(categoryId, pageable);
             return ResponseEntity.ok(ApiResponse.success(menuItems));
         } catch (Exception e) {

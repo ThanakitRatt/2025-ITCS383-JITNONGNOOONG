@@ -1,33 +1,65 @@
 import { useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { useApp } from '../../contexts/AppContext';
 import { ArrowLeft, MapPin, DollarSign, Package, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { orderService, Order, OrderStatus } from '../../services/order.service';
 
 export default function RiderDashboard() {
   const navigate = useNavigate();
-  const { orders, updateOrder, user, logout } = useApp();
+  const { user, logout } = useApp();
+  const [availableOrders, setAvailableOrders] = useState<Order[]>([]);
+  const [myDeliveries, setMyDeliveries] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const riderId = user?.id ?? 'RIDER001';
-  const myDeliveries = orders.filter(o => o.riderId === riderId);
-  const activeDelivery = myDeliveries.find(o => o.status === 'delivering');
+  const riderId = user?.id ?? 0;
+  const activeDelivery = myDeliveries.find(o => o.status === OrderStatus.PICKED_UP);
   
-  const availableOrders = orders.filter(o => 
-    o.status === 'ready' && !o.riderId
-  );
+  // Fetch available orders for riders
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch orders that are ready for pickup (not assigned to any rider)
+        const availableOrdersResponse = await orderService.getAvailableOrdersForRiders(0, 50);
+        setAvailableOrders(availableOrdersResponse.content);
+        
+        // Fetch this rider's deliveries (active + completed)
+        if (riderId) {
+          const riderOrdersResponse = await orderService.getRiderOrders(riderId, 0, 50);
+          setMyDeliveries(riderOrdersResponse.content);
+        }
+        
+      } catch (error) {
+        console.error('Failed to fetch orders:', error);
+        toast.error('Failed to load available orders');
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchOrders();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchOrders, 30000);
+    return () => clearInterval(interval);
+  }, [riderId]);
+
+  // Calculate stats
   const todayEarnings = myDeliveries
     .filter(o => 
-      o.status === 'completed' && 
-      o.createdAt.toDateString() === new Date().toDateString()
+      o.status === OrderStatus.DELIVERED && 
+      new Date(o.createdAt).toDateString() === new Date().toDateString()
     )
-    .length * 50; // Mock ฿50 per delivery
+    .reduce((sum, o) => sum + (o.deliveryFee ?? 0), 0);
 
   const completedToday = myDeliveries.filter(o => 
-    o.status === 'completed' && 
-    o.createdAt.toDateString() === new Date().toDateString()
+    o.status === OrderStatus.DELIVERED && 
+    new Date(o.createdAt).toDateString() === new Date().toDateString()
   ).length;
 
   const handleExit = () => {
@@ -35,15 +67,81 @@ export default function RiderDashboard() {
     navigate('/login');
   };
 
-  const handleAcceptOrder = (orderId: string) => {
-    updateOrder(orderId, {
-      riderId: riderId,
-      riderName: 'Mike Chen',
-      status: 'delivering'
-    });
-    toast.success('Order accepted!');
-    navigate(`/rider/delivery/${orderId}`);
+  const handleAcceptOrder = async (orderId: number) => {
+    try {
+      // Update order status to PICKED_UP when rider accepts
+      await orderService.updateOrderStatus(orderId, {
+        newStatus: OrderStatus.PICKED_UP,
+        updatedBy: Number(riderId),
+        notes: 'Order picked up by rider'
+      });
+      
+      toast.success('Order accepted!');
+      
+      // Refresh available orders
+      const availableOrdersResponse = await orderService.getAvailableOrdersForRiders(0, 50);
+      setAvailableOrders(availableOrdersResponse.content);
+      
+      navigate(`/rider/delivery/${orderId}`);
+    } catch (error) {
+      console.error('Failed to accept order:', error);
+      toast.error('Failed to accept order. Please try again.');
+    }
   };
+
+  let availableOrdersContent;
+  if (loading) {
+    availableOrdersContent = (
+      <div className="text-center py-8">
+        <Clock className="w-16 h-16 text-gray-300 mx-auto mb-4 animate-spin" />
+        <p className="text-gray-500">Loading available orders...</p>
+      </div>
+    );
+  } else if (availableOrders.length === 0) {
+    availableOrdersContent = (
+      <div className="text-center py-8">
+        <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No available orders at the moment</p>
+        <p className="text-sm text-gray-400 mt-2">New orders will appear here</p>
+      </div>
+    );
+  } else {
+    availableOrdersContent = (
+      <div className="space-y-4">
+        {availableOrders.map(order => (
+          <Card key={order.id} className="border-2">
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-semibold">Restaurant ID: {order.restaurantId}</p>
+                    <p className="text-sm text-gray-500">Order #{order.orderNumber}</p>
+                    <p className="text-sm font-semibold text-green-600">฿{order.totalAmount.toFixed(2)}</p>
+                  </div>
+                  <Badge className="bg-green-500">
+                    ฿50 delivery fee
+                  </Badge>
+                </div>
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 mt-1 text-gray-500 flex-shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-semibold">Customer ID: {order.customerId}</p>
+                    <p className="text-gray-600">{order.deliveryAddress}</p>
+                  </div>
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={() => handleAcceptOrder(order.id)}
+                >
+                  Accept Order
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -53,7 +151,7 @@ export default function RiderDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl">🚴 Rider Portal</h1>
-              <p className="text-sm text-gray-500">Mike Chen</p>
+              <p className="text-sm text-gray-500">{user?.name ?? 'Rider'}</p>
             </div>
             <Button variant="ghost" onClick={handleExit}>
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -121,12 +219,12 @@ export default function RiderDashboard() {
             <CardContent>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-gray-500">Order #{activeDelivery.id}</p>
-                  <p className="font-semibold">{activeDelivery.restaurantName}</p>
+                  <p className="text-sm text-gray-500">Order #{activeDelivery.orderNumber}</p>
+                  <p className="font-semibold">Restaurant ID: {activeDelivery.restaurantId}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Customer</p>
-                  <p className="font-semibold">{activeDelivery.customerName}</p>
+                  <p className="font-semibold">Customer ID: {activeDelivery.customerId}</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 mt-1 text-gray-500 flex-shrink-0" />
@@ -149,46 +247,7 @@ export default function RiderDashboard() {
             <CardTitle>Available Orders Nearby</CardTitle>
           </CardHeader>
           <CardContent>
-            {availableOrders.length === 0 ? (
-              <div className="text-center py-8">
-                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No available orders at the moment</p>
-                <p className="text-sm text-gray-400 mt-2">New orders will appear here</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {availableOrders.map(order => (
-                  <Card key={order.id} className="border-2">
-                    <CardContent className="pt-6">
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-semibold">{order.restaurantName}</p>
-                            <p className="text-sm text-gray-500">Order #{order.id}</p>
-                          </div>
-                          <Badge className="bg-green-500">
-                            ฿50 delivery fee
-                          </Badge>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <MapPin className="w-4 h-4 mt-1 text-gray-500 flex-shrink-0" />
-                          <div className="text-sm">
-                            <p className="font-semibold">{order.customerName}</p>
-                            <p className="text-gray-600">{order.deliveryAddress}</p>
-                          </div>
-                        </div>
-                        <Button 
-                          className="w-full"
-                          onClick={() => handleAcceptOrder(order.id)}
-                        >
-                          Accept Order
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+            {availableOrdersContent}
           </CardContent>
         </Card>
       </div>

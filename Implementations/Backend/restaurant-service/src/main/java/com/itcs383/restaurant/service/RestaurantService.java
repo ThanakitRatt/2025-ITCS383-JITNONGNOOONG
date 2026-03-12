@@ -519,7 +519,7 @@ public class RestaurantService {
     /**
      * Get restaurant categories
      */
-    @Cacheable(value = "menu-categories", key = "#restaurantId")
+    // @Cacheable(value = "menu-categories", key = "#restaurantId") // Temporarily disabled due to lazy initialization with Redis
     @Transactional(readOnly = true)
     public List<MenuCategory> getRestaurantCategories(Long restaurantId) {
         logger.debug("Fetching categories for restaurant: {}", restaurantId);

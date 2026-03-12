@@ -1,18 +1,22 @@
 package com.itcs383.restaurant.controller;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.itcs383.restaurant.config.JpaConfig;
+import com.itcs383.restaurant.service.UserService;
 
 @WebMvcTest(controllers = AuthController.class,
     excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaConfig.class))
@@ -20,6 +24,16 @@ class AuthControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockBean
+    private UserService userService;
+
+    @BeforeEach
+    void setUp() {
+        Mockito.when(userService.emailExists(Mockito.anyString())).thenReturn(false);
+        Mockito.when(userService.phoneExists(Mockito.anyString())).thenReturn(false);
+        Mockito.when(userService.createUser(Mockito.anyMap())).thenReturn(42L);
+    }
 
     // POST /api/auth/login — valid credentials
     @Test

@@ -51,6 +51,8 @@ export const API_ENDPOINTS = {
     STATUS: (id: string) => `/api/${API_VERSION}/orders/${id}/status`,
     CANCEL: (id: string) => `/api/${API_VERSION}/orders/${id}`,
     ADMIN_STATS: `/api/${API_VERSION}/orders/admin/stats`,
+    RIDER_AVAILABLE: `/api/${API_VERSION}/orders/rider/available`,
+    RIDER: (riderId: string) => `/api/${API_VERSION}/orders/rider/${riderId}`,
   },
   
   // Payments

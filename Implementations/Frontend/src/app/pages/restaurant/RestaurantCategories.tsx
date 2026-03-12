@@ -12,7 +12,8 @@ import { useApp } from '../../contexts/AppContext';
 export default function RestaurantCategories() {
   const navigate = useNavigate();
   const { user } = useApp();
-  const restaurantId = user?.id || '1';
+  const ownerId = user?.id || '1';
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
 
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -22,10 +23,28 @@ export default function RestaurantCategories() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadCategories();
+    const initRestaurant = async () => {
+      try {
+        const restaurants = await restaurantService.getOwnerRestaurants(ownerId);
+        if (restaurants && restaurants.length > 0) {
+          setRestaurantId(restaurants[0].id.toString());
+        }
+      } catch (error) {
+        console.error('Failed to load restaurant:', error);
+        toast.error('Failed to load restaurant');
+      }
+    };
+    initRestaurant();
+  }, [ownerId]);
+
+  useEffect(() => {
+    if (restaurantId) {
+      loadCategories();
+    }
   }, [restaurantId]);
 
   const loadCategories = async () => {
+    if (!restaurantId) return;
     try {
       setLoadingData(true);
       const data = await restaurantService.getRestaurantCategories(restaurantId);
@@ -39,7 +58,7 @@ export default function RestaurantCategories() {
 
   const handleAdd = async (e: React.SyntheticEvent) => {
     e.preventDefault();
-    if (!newName.trim()) return;
+    if (!restaurantId || !newName.trim()) return;
     setAdding(true);
     try {
       const created = await restaurantService.addMenuCategory(restaurantId, {
@@ -58,6 +77,10 @@ export default function RestaurantCategories() {
   };
 
   const handleDelete = async (categoryId: string) => {
+    if (!restaurantId) {
+      toast.error('Restaurant not loaded');
+      return;
+    }
     if (!confirm('Delete this category? Menu items in this category will be unassigned.')) return;
     setDeletingId(categoryId);
     try {

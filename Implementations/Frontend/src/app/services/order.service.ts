@@ -15,11 +15,11 @@ import { API_ENDPOINTS } from '../config/api.config';
  * Order Type Definitions
  */
 export interface Order {
-  id: string;
+  id: number;
   orderNumber: string;
-  customerId: string;
-  restaurantId: string;
-  riderId?: string;
+  customerId: number;
+  restaurantId: number;
+  riderId?: number;
   deliveryAddress: string;
   deliveryLatitude?: number;
   deliveryLongitude?: number;
@@ -117,10 +117,10 @@ class OrderService {
   /**
    * Get order by ID
    */
-  async getOrderById(id: string): Promise<Order> {
+  async getOrderById(id: number | string): Promise<Order> {
     try {
       const response = await apiClient.get<ApiResponse<Order>>(
-        API_ENDPOINTS.ORDERS.BY_ID(id)
+        API_ENDPOINTS.ORDERS.BY_ID(String(id))
       );
       
       return response.data.data;
@@ -150,14 +150,14 @@ class OrderService {
    * Get customer orders
    */
   async getCustomerOrders(
-    customerId: string,
+    customerId: number | string,
     page: number = 0,
     size: number = 20,
     status?: OrderStatus
   ): Promise<PaginatedResponse<Order>> {
     try {
       const response = await apiClient.get<ApiResponse<PaginatedResponse<Order>>>(
-        API_ENDPOINTS.ORDERS.CUSTOMER(customerId),
+        API_ENDPOINTS.ORDERS.CUSTOMER(String(customerId)),
         {
           params: { page, size, status },
         }
@@ -174,14 +174,14 @@ class OrderService {
    * Get restaurant orders
    */
   async getRestaurantOrders(
-    restaurantId: string,
+    restaurantId: number | string,
     page: number = 0,
     size: number = 20,
     status?: OrderStatus
   ): Promise<PaginatedResponse<Order>> {
     try {
       const response = await apiClient.get<ApiResponse<PaginatedResponse<Order>>>(
-        API_ENDPOINTS.ORDERS.RESTAURANT(restaurantId),
+        API_ENDPOINTS.ORDERS.RESTAURANT(String(restaurantId)),
         {
           params: { page, size, status },
         }
@@ -198,12 +198,12 @@ class OrderService {
    * Update order status
    */
   async updateOrderStatus(
-    orderId: string,
+    orderId: number | string,
     statusData: UpdateOrderStatusRequest
   ): Promise<Order> {
     try {
       const response = await apiClient.put<ApiResponse<Order>>(
-        API_ENDPOINTS.ORDERS.STATUS(orderId),
+        API_ENDPOINTS.ORDERS.STATUS(String(orderId)),
         statusData
       );
       
@@ -217,13 +217,79 @@ class OrderService {
   /**
    * Cancel order
    */
-  async cancelOrder(orderId: string, userId: string, reason?: string): Promise<void> {
+  async cancelOrder(orderId: number | string, userId: number | string, reason?: string): Promise<void> {
     try {
-      await apiClient.delete(API_ENDPOINTS.ORDERS.CANCEL(orderId), {
+      await apiClient.delete(API_ENDPOINTS.ORDERS.CANCEL(String(orderId)), {
         params: { userId, reason },
       });
     } catch (error) {
       console.error(`Failed to cancel order ${orderId}:`, handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Get orders by status (for riders to see available orders)
+   */
+  async getOrdersByStatus(
+    status: OrderStatus,
+    page: number = 0,
+    size: number = 20
+  ): Promise<PaginatedResponse<Order>> {
+    try {
+      const response = await apiClient.get<ApiResponse<PaginatedResponse<Order>>>(
+        API_ENDPOINTS.ORDERS.BASE,
+        {
+          params: { page, size, status },
+        }
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error(`Failed to fetch orders with status ${status}:`, handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Get available orders for riders
+   * Returns orders with READY_FOR_PICKUP status that have no assigned rider
+   */
+  async getAvailableOrdersForRiders(
+    page: number = 0,
+    size: number = 50
+  ): Promise<PaginatedResponse<Order>> {
+    try {
+      const response = await apiClient.get<ApiResponse<PaginatedResponse<Order>>>(
+        API_ENDPOINTS.ORDERS.RIDER_AVAILABLE,
+        {
+          params: { page, size },
+        }
+      );
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to fetch available orders for riders:', handleApiError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Get orders assigned to a specific rider
+   */
+  async getRiderOrders(
+    riderId: number,
+    page: number = 0,
+    size: number = 50
+  ): Promise<PaginatedResponse<Order>> {
+    try {
+      const response = await apiClient.get<ApiResponse<PaginatedResponse<Order>>>(
+        API_ENDPOINTS.ORDERS.RIDER(String(riderId)),
+        { params: { page, size } }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('Failed to fetch rider orders:', handleApiError(error));
       throw error;
     }
   }

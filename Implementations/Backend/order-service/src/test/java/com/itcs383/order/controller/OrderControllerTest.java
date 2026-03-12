@@ -357,6 +357,56 @@ class OrderControllerTest {
         verify(orderService).cancelOrder(eq(orderId), any(), any());
     }
 
+    @Test
+    void getRiderOrders_WithValidRiderId_ShouldReturn200() throws Exception {
+        // Given
+        Long riderId = 200L;
+        Page<OrderDTO> orderPage = new PageImpl<>(
+            Arrays.asList(validOrderDTO),
+            PageRequest.of(0, 50),
+            1
+        );
+
+        when(orderService.getRiderOrders(eq(riderId), any()))
+            .thenReturn(orderPage);
+
+        // When & Then
+        mockMvc.perform(get("/orders/rider/{riderId}", riderId)
+                .param("page", "0")
+                .param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content[0].id").value(validOrderDTO.getId()));
+
+        verify(orderService).getRiderOrders(eq(riderId), any());
+    }
+
+    @Test
+    void getAvailableOrdersForRiders_ShouldReturn200() throws Exception {
+        // Given
+        OrderDTO readyOrder = createValidOrderDTO();
+        readyOrder.setStatus(OrderStatus.READY_FOR_PICKUP.name());
+        Page<OrderDTO> orderPage = new PageImpl<>(
+            Arrays.asList(readyOrder),
+            PageRequest.of(0, 50),
+            1
+        );
+
+        when(orderService.getAvailableOrdersForRiders(any()))
+            .thenReturn(orderPage);
+
+        // When & Then
+        mockMvc.perform(get("/orders/rider/available")
+                .param("page", "0")
+                .param("size", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content").isArray());
+
+        verify(orderService).getAvailableOrdersForRiders(any());
+    }
+
     // Helper methods for test data creation
     private CreateOrderRequest createValidOrderRequest() {
         CreateOrderRequest request = new CreateOrderRequest();

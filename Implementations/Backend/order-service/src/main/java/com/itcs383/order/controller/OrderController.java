@@ -23,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.itcs383.common.dto.OrderDTO;
 import com.itcs383.common.enums.OrderStatus;
+import com.itcs383.common.exception.OrderStatusException;
+import com.itcs383.common.exception.ResourceNotFoundException;
 import com.itcs383.order.dto.CreateOrderRequest;
 import com.itcs383.order.dto.UpdateOrderStatusRequest;
 import com.itcs383.order.service.OrderService;
@@ -66,6 +68,14 @@ public class OrderController {
     private static final String MSG_FAILED_CANCEL = "Failed to cancel order";
     private static final String MSG_FAILED_FETCH_ORDERS = "Failed to fetch orders";
     private static final String MSG_INVALID_STATUS = "Invalid status: ";
+
+    // Constants for pagination response keys
+    private static final String SORT_CREATED_AT   = "createdAt";
+    private static final String PAGE_CONTENT       = "content";
+    private static final String PAGE_TOTAL_ELEMENTS = "totalElements";
+    private static final String PAGE_TOTAL_PAGES   = "totalPages";
+    private static final String PAGE_IS_FIRST      = "isFirst";
+    private static final String PAGE_IS_LAST       = "isLast";
 
     private final OrderService orderService;
 
@@ -189,14 +199,14 @@ public class OrderController {
                 KEY_DATA, order
             ));
             
-        } catch (IllegalStateException e) {
+        } catch (OrderStatusException | IllegalStateException e) {
             logger.warn("Invalid status transition for order {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(Map.of(
                 KEY_SUCCESS, false,
                 KEY_ERROR, e.getMessage()
             ));
             
-        } catch (RuntimeException e) {
+        } catch (ResourceNotFoundException e) {
             logger.warn(LOG_ORDER_NOT_FOUND, id);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                 KEY_SUCCESS, false,
@@ -278,7 +288,7 @@ public class OrderController {
                     customerId, page, size, status);
         
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            Pageable pageable = PageRequest.of(page, size, Sort.by(SORT_CREATED_AT).descending());
             Page<OrderDTO> orders;
             
             if (status != null && !status.isEmpty()) {
@@ -291,13 +301,13 @@ public class OrderController {
             return ResponseEntity.ok(Map.of(
                 KEY_SUCCESS, true,
                 KEY_DATA, Map.of(
-                    "content", orders.getContent(),
+                    PAGE_CONTENT, orders.getContent(),
                     "page", orders.getNumber(),
                     "size", orders.getSize(),
-                    "totalElements", orders.getTotalElements(),
-                    "totalPages", orders.getTotalPages(),
-                    "isFirst", orders.isFirst(),
-                    "isLast", orders.isLast()
+                    PAGE_TOTAL_ELEMENTS, orders.getTotalElements(),
+                    PAGE_TOTAL_PAGES, orders.getTotalPages(),
+                    PAGE_IS_FIRST, orders.isFirst(),
+                    PAGE_IS_LAST, orders.isLast()
                 )
             ));
             
@@ -330,7 +340,7 @@ public class OrderController {
                     restaurantId, page, size, status);
         
         try {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").ascending());
+            Pageable pageable = PageRequest.of(page, size, Sort.by(SORT_CREATED_AT).ascending());
             Page<OrderDTO> orders;
             
             if (status != null && !status.isEmpty()) {
@@ -343,13 +353,13 @@ public class OrderController {
             return ResponseEntity.ok(Map.of(
                 KEY_SUCCESS, true,
                 KEY_DATA, Map.of(
-                    "content", orders.getContent(),
+                    PAGE_CONTENT, orders.getContent(),
                     "page", orders.getNumber(),
                     "size", orders.getSize(),
-                    "totalElements", orders.getTotalElements(),
-                    "totalPages", orders.getTotalPages(),
-                    "isFirst", orders.isFirst(),
-                    "isLast", orders.isLast()
+                    PAGE_TOTAL_ELEMENTS, orders.getTotalElements(),
+                    PAGE_TOTAL_PAGES, orders.getTotalPages(),
+                    PAGE_IS_FIRST, orders.isFirst(),
+                    PAGE_IS_LAST, orders.isLast()
                 )
             ));
             
@@ -362,6 +372,76 @@ public class OrderController {
             
         } catch (Exception e) {
             logger.error("Failed to fetch restaurant {} orders: {}", restaurantId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                KEY_SUCCESS, false,
+                KEY_MESSAGE, MSG_FAILED_FETCH_ORDERS
+            ));
+        }
+    }
+
+    /**
+     * Get orders assigned to a specific rider
+     * GET /orders/rider/{riderId}
+     */
+    @GetMapping("/rider/{riderId}")
+    public ResponseEntity<Map<String, Object>> getRiderOrders(@PathVariable Long riderId,
+                                              @RequestParam(defaultValue = "0") int page,
+                                              @RequestParam(defaultValue = "50") int size) {
+        logger.debug("Fetching orders for rider {} (page={}, size={})", riderId, page, size);
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(SORT_CREATED_AT).descending());
+            Page<OrderDTO> orders = orderService.getRiderOrders(riderId, pageable);
+            return ResponseEntity.ok(Map.of(
+                KEY_SUCCESS, true,
+                KEY_DATA, Map.of(
+                    PAGE_CONTENT, orders.getContent(),
+                    "page", orders.getNumber(),
+                    "size", orders.getSize(),
+                    PAGE_TOTAL_ELEMENTS, orders.getTotalElements(),
+                    PAGE_TOTAL_PAGES, orders.getTotalPages(),
+                    PAGE_IS_FIRST, orders.isFirst(),
+                    PAGE_IS_LAST, orders.isLast()
+                )
+            ));
+        } catch (Exception e) {
+            logger.error("Failed to fetch rider {} orders: {}", riderId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                KEY_SUCCESS, false,
+                KEY_MESSAGE, MSG_FAILED_FETCH_ORDERS
+            ));
+        }
+    }
+
+    /**
+     * Get available orders for riders
+     * GET /orders/rider/available
+     * Returns all orders with READY_FOR_PICKUP status that don't have an assigned rider
+     */
+    @GetMapping("/rider/available")
+    public ResponseEntity<Map<String, Object>> getAvailableOrdersForRiders(
+                                                @RequestParam(defaultValue = "0") int page,
+                                                @RequestParam(defaultValue = "50") int size) {
+        logger.debug("Fetching available orders for riders (page={}, size={})", page, size);
+        
+        try {
+            Pageable pageable = PageRequest.of(page, size, Sort.by(SORT_CREATED_AT).ascending());
+            Page<OrderDTO> orders = orderService.getAvailableOrdersForRiders(pageable);
+            
+            return ResponseEntity.ok(Map.of(
+                KEY_SUCCESS, true,
+                KEY_DATA, Map.of(
+                    PAGE_CONTENT, orders.getContent(),
+                    "page", orders.getNumber(),
+                    "size", orders.getSize(),
+                    PAGE_TOTAL_ELEMENTS, orders.getTotalElements(),
+                    PAGE_TOTAL_PAGES, orders.getTotalPages(),
+                    PAGE_IS_FIRST, orders.isFirst(),
+                    PAGE_IS_LAST, orders.isLast()
+                )
+            ));
+            
+        } catch (Exception e) {
+            logger.error("Failed to fetch available orders for riders: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 KEY_SUCCESS, false,
                 KEY_MESSAGE, MSG_FAILED_FETCH_ORDERS

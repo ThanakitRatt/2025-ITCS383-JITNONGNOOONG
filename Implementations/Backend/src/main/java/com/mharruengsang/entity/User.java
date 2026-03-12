@@ -37,6 +37,10 @@ public class User {
     @Column(nullable = false)
     private UserRole role; // CUSTOMER, RIDER, RESTAURANT, ADMIN
     
+    @Column(precision = 10, scale = 2)
+    @Builder.Default
+    private BigDecimal balance = BigDecimal.ZERO; // Wallet balance for riders
+    
     @Column(nullable = false)
     @Builder.Default
     private Boolean enabled = true;

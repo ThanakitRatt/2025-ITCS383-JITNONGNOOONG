@@ -15,8 +15,9 @@ export default function MenuManagement() {
   const navigate = useNavigate();
   const { user } = useApp();
   
-  // Get restaurant ID from user context (in production, this comes from logged-in user)
-  const restaurantId = user?.id || '1';
+  // Get restaurant ID from owner ID
+  const ownerId = user?.id || '1';
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
   
   const [items, setItems] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -32,12 +33,31 @@ export default function MenuManagement() {
     preparationTime: '15'
   });
 
-  // Load menu items on mount
+  // Load restaurant by owner ID first
   useEffect(() => {
-    loadMenuData();
+    const initRestaurant = async () => {
+      try {
+        const restaurants = await restaurantService.getOwnerRestaurants(ownerId);
+        if (restaurants && restaurants.length > 0) {
+          setRestaurantId(restaurants[0].id.toString());
+        }
+      } catch (error) {
+        console.error('Failed to load restaurant:', error);
+        toast.error('Failed to load restaurant');
+      }
+    };
+    initRestaurant();
+  }, [ownerId]);
+
+  // Load menu items when restaurant ID is available
+  useEffect(() => {
+    if (restaurantId) {
+      loadMenuData();
+    }
   }, [restaurantId]);
 
   const loadMenuData = async () => {
+    if (!restaurantId) return;
     try {
       setLoadingData(true);
       const [menuItems, menuCategories] = await Promise.all([
@@ -82,6 +102,10 @@ export default function MenuManagement() {
   };
 
   const handleDelete = async (itemId: string) => {
+    if (!restaurantId) {
+      toast.error('Restaurant not loaded');
+      return;
+    }
     if (!confirm('Are you sure you want to delete this menu item?')) {
       return;
     }
@@ -98,15 +122,19 @@ export default function MenuManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!restaurantId) {
+      toast.error('Restaurant not loaded');
+      return;
+    }
     setLoading(true);
     
     try {
       const itemData = {
         name: formData.name,
         description: formData.description,
-        price: parseFloat(formData.price),
-        categoryId: parseInt(formData.categoryId),
-        preparationTime: parseInt(formData.preparationTime),
+        price: Number.parseFloat(formData.price),
+        categoryId: Number.parseInt(formData.categoryId),
+        preparationTime: Number.parseInt(formData.preparationTime),
         isAvailable: true
       };
 

@@ -12,7 +12,7 @@ import type { Order } from '../../services/order.service';
 export default function RestaurantDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useApp();
-  const restaurantId = user?.id?.toString() || '1';
+  const ownerId = user?.id?.toString() || '1';
 
   const [restaurant, setRestaurant] = useState<RestaurantData | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -23,6 +23,19 @@ export default function RestaurantDashboard() {
     const loadDashboard = async () => {
       setLoading(true);
       try {
+        // First, get the restaurant data by owner ID
+        const ownerRestaurants = await restaurantService.getOwnerRestaurants(ownerId).catch(() => null);
+        if (!ownerRestaurants || ownerRestaurants.length === 0) {
+          console.error('No restaurant found for owner:', ownerId);
+          setLoading(false);
+          return;
+        }
+
+        const restaurantData = ownerRestaurants[0];
+        setRestaurant(restaurantData);
+        
+        // Now fetch menu and orders using the actual restaurant ID
+        const restaurantId = restaurantData.id.toString();
         const [menuResult, ordersPage] = await Promise.all([
           restaurantService.getRestaurantMenu(restaurantId).catch(() => null),
           orderService.getRestaurantOrders(restaurantId, 0, 20).catch(() => null),
@@ -38,12 +51,6 @@ export default function RestaurantDashboard() {
 
         const orders: Order[] = ordersPage?.content ?? [];
         setRecentOrders(orders);
-
-        // Try to load restaurant info by owner
-        const ownerRestaurants = await restaurantService.getOwnerRestaurants(restaurantId).catch(() => null);
-        if (ownerRestaurants && ownerRestaurants.length > 0) {
-          setRestaurant(ownerRestaurants[0]);
-        }
       } catch {
         // fail silently — individual errors already caught above
       } finally {
@@ -52,7 +59,7 @@ export default function RestaurantDashboard() {
     };
 
     loadDashboard();
-  }, [restaurantId]);
+  }, [ownerId]);
 
   const handleExit = () => {
     logout();

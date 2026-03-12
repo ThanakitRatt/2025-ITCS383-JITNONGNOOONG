@@ -19,8 +19,8 @@ export default function Checkout() {
   const [placing, setPlacing] = useState(false);
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const commission = subtotal * 0.1; // 10% platform fee
-  const total = subtotal + commission;
+  const deliveryFee = subtotal >= 300 ? 0 : 35; // matches backend calculateDeliveryFee()
+  const total = subtotal + deliveryFee;
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0) {
@@ -200,8 +200,8 @@ export default function Checkout() {
                     <span>฿{subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Platform Fee (10%)</span>
-                    <span>฿{commission.toFixed(2)}</span>
+                    <span>Delivery Fee{subtotal >= 300 ? ' (Free)' : ''}</span>
+                    <span>{subtotal >= 300 ? '฿0.00' : '฿35.00'}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-semibold">

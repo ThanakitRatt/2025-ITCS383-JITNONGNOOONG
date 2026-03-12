@@ -1,4 +1,5 @@
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/RestaurantServiceApplication.java
+/Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/config/AuthDataSourceConfig.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/config/CacheConfig.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/config/JpaConfig.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/controller/AuthController.java
@@ -14,3 +15,4 @@
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/repository/MenuItemRepository.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/repository/RestaurantRepository.java
 /Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/service/RestaurantService.java
+/Users/pks_aito/Documents/GitHub/2025-ITCS383-MharRuengSang/Implementations/Backend/restaurant-service/src/main/java/com/itcs383/restaurant/service/UserService.java

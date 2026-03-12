@@ -340,6 +340,87 @@ class OrderServiceTest {
         verify(orderRepository).findByRestaurantIdAndStatusOrderByCreatedAtAsc(restaurantId, status, pageable);
     }
 
+    @Test
+    void getRiderOrders_WithValidRiderId_ShouldReturnPagedOrders() {
+        // Given
+        Long riderId = 200L;
+        Pageable pageable = PageRequest.of(0, 50);
+        List<Order> orders = Arrays.asList(validOrder);
+        Page<Order> orderPage = new PageImpl<>(orders, pageable, orders.size());
+
+        when(orderRepository.findByRiderIdOrderByCreatedAtDesc(riderId, pageable))
+            .thenReturn(orderPage);
+
+        // When
+        Page<OrderDTO> result = orderService.getRiderOrders(riderId, pageable);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        assertEquals(validOrder.getId(), result.getContent().get(0).getId());
+        verify(orderRepository).findByRiderIdOrderByCreatedAtDesc(riderId, pageable);
+    }
+
+    @Test
+    void getRiderOrders_WithNoOrders_ShouldReturnEmptyPage() {
+        // Given
+        Long riderId = 999L;
+        Pageable pageable = PageRequest.of(0, 50);
+        Page<Order> emptyPage = new PageImpl<>(new ArrayList<>(), pageable, 0);
+
+        when(orderRepository.findByRiderIdOrderByCreatedAtDesc(riderId, pageable))
+            .thenReturn(emptyPage);
+
+        // When
+        Page<OrderDTO> result = orderService.getRiderOrders(riderId, pageable);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(0, result.getTotalElements());
+        assertTrue(result.getContent().isEmpty());
+        verify(orderRepository).findByRiderIdOrderByCreatedAtDesc(riderId, pageable);
+    }
+
+    @Test
+    void getAvailableOrdersForRiders_ShouldReturnReadyForPickupOrders() {
+        // Given
+        Pageable pageable = PageRequest.of(0, 50);
+        Order readyOrder = createValidOrder();
+        readyOrder.setStatus(OrderStatus.READY_FOR_PICKUP);
+        List<Order> orders = Arrays.asList(readyOrder);
+        Page<Order> orderPage = new PageImpl<>(orders, pageable, orders.size());
+
+        when(orderRepository.findAvailableOrdersForRiders(eq(OrderStatus.READY_FOR_PICKUP), eq(pageable)))
+            .thenReturn(orderPage);
+
+        // When
+        Page<OrderDTO> result = orderService.getAvailableOrdersForRiders(pageable);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(1, result.getTotalElements());
+        verify(orderRepository).findAvailableOrdersForRiders(eq(OrderStatus.READY_FOR_PICKUP), eq(pageable));
+    }
+
+    @Test
+    void getAvailableOrdersForRiders_WithNoAvailableOrders_ShouldReturnEmptyPage() {
+        // Given
+        Pageable pageable = PageRequest.of(0, 50);
+        Page<Order> emptyPage = new PageImpl<>(new ArrayList<>(), pageable, 0);
+
+        when(orderRepository.findAvailableOrdersForRiders(eq(OrderStatus.READY_FOR_PICKUP), eq(pageable)))
+            .thenReturn(emptyPage);
+
+        // When
+        Page<OrderDTO> result = orderService.getAvailableOrdersForRiders(pageable);
+
+        // Then
+        assertNotNull(result);
+        assertEquals(0, result.getTotalElements());
+        assertTrue(result.getContent().isEmpty());
+        verify(orderRepository).findAvailableOrdersForRiders(eq(OrderStatus.READY_FOR_PICKUP), eq(pageable));
+    }
+
     // Helper methods for test data creation
     private CreateOrderRequest createValidOrderRequest() {
         CreateOrderRequest request = new CreateOrderRequest();

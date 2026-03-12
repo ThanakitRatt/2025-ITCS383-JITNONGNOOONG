@@ -49,6 +49,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o WHERE o.riderId = :riderId AND o.status IN :statuses ORDER BY o.createdAt ASC")
     List<Order> findByRiderIdAndStatusIn(@Param("riderId") Long riderId, @Param("statuses") List<OrderStatus> statuses);
 
+    // Find available orders for riders (READY_FOR_PICKUP status and no assigned rider)
+    @Query("SELECT o FROM Order o WHERE o.status = :status AND o.riderId IS NULL ORDER BY o.createdAt ASC")
+    Page<Order> findAvailableOrdersForRiders(@Param("status") OrderStatus status, Pageable pageable);
+
     // Status-based queries (for order processing)
     @Query("SELECT o FROM Order o WHERE o.status = :status ORDER BY o.createdAt ASC")
     Page<Order> findByStatusOrderByCreatedAtAsc(@Param("status") OrderStatus status, Pageable pageable);

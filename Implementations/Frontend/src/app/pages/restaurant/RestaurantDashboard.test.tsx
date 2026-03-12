@@ -40,8 +40,9 @@ const todayOrder = {
 };
 
 beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(restaurantService.getOwnerRestaurants).mockResolvedValue([{ id: 'R1', name: 'My Restaurant' } as any]);
   vi.mocked(restaurantService.getRestaurantMenu).mockResolvedValue([]);
-  vi.mocked(restaurantService.getOwnerRestaurants).mockResolvedValue([]);
   vi.mocked(orderService.getRestaurantOrders).mockResolvedValue({ content: [todayOrder] } as any);
 });
 
