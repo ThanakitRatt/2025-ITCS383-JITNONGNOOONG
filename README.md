@@ -141,16 +141,18 @@ npx vitest run
 
 ### Demo Accounts
 
-Log in with any of the following demo accounts (use any password, then enter any 6-digit OTP):
+Log in with any of the following demo accounts, then enter any 6-digit OTP (e.g. `123456`):
 
-| Email | Role | Dashboard |
-|---|---|---|
-| `customer@foodexpress.com` | Customer | Customer Dashboard |
-| `restaurant@foodexpress.com` | Restaurant | Restaurant Dashboard |
-| `rider@foodexpress.com` | Rider | Rider Dashboard |
-| `admin@foodexpress.com` | Admin | Admin Dashboard |
+| Name | Email | Password | Role | Dashboard |
+|---|---|---|---|---|
+| John Doe | `customer@foodexpress.com` | `Customer123!` | Customer | Customer Dashboard |
+| Sarah Wilson | `sarah@foodexpress.com` | `Sarah123!` | Customer | Customer Dashboard |
+| Bangkok Street Food | `restaurant@foodexpress.com` | `Restaurant123!` | Restaurant | Restaurant Dashboard |
+| Sushi Master | `sushi@foodexpress.com` | `Sushi123!` | Restaurant | Restaurant Dashboard |
+| Mike Chen | `rider@foodexpress.com` | `Rider123!` | Rider | Rider Dashboard |
+| Admin User | `admin@foodexpress.com` | `Admin123!` | Admin | Admin Dashboard |
 
-Open **http://localhost:5173**, click **Login**, enter a demo email, then enter `123456` as the OTP.
+Open **http://localhost:5173**, click **Login**, enter a demo email and password, then enter `123456` as the OTP.
 
 ### API Examples
 
