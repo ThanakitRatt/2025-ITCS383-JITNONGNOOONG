@@ -59,7 +59,7 @@ App Diagram: Mobile app module is missing. API Gateway, Restaurant, Order manage
 ![Payment Service](Designs/Image/Payment%20Service.%20Component%20Diagram.png)
 
 3.4 Restaurant Service: Promotion Controller(main/controller/promotioncontroller) covers all create, update, delete . For Menu controller(restaurant-service) covers all CRUD
-![Restaurant Service](Designs/Image/Restaurant%20Service.%20Component%20Diagram.pn)
+![Restaurant Service](Designs/Image/Restaurant%20Service.%20Component%20Diagram.png)
 
 There are some modules that were not mentioned in the C4 diagram, but appear on the implementation. There are also components that appear on the C4 diagram, but not in the implementation. There are components that were in the higher hierarchy but disappear in the lower diagrams. Overall, the diagram is quite inconsistent especially in payment components, but the consistency from the components diagram to implementation is okay despite some naming inconsistencies.
 
