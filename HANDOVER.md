@@ -43,6 +43,8 @@ Implemented system has:
 ### Context Diagram
 Context Diagram: They really provide user roles as in the implementation
 ![Context Diagram](Designs/Image/Context%20Diagram.png)
+Updated:
+![Updated Context Diagram](Designs/Image/Context%20Diagram.png)
 
 ### Container Diagram
 App Diagram: Mobile app module is missing. API Gateway, Restaurant, Order management are found but in different names. While other services like Customer, Rider, Admin are found hidden in different places, it is a bit hard to track which reduces consistency. Databases are found as well including cache.
