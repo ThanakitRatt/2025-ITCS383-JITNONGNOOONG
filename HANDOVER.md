@@ -69,7 +69,7 @@ There are some modules that were not mentioned in the C4 diagram, but appear on 
 
 Updated:
 ![Updated Context Diagram](Designs/UpdatedDiagrams/WebFrontEndComponentDiagram2.png)
-![Updated Context Diagram](Designs/UpdatedDiagrams/BackEndComponenetDiagram2.png)
+![Updated Context Diagram](Designs/UpdatedDiagrams/BackEndComponentDiagram2.png)
 
 ## 3. Reflections on Receiving the Handover Project
 
