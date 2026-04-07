@@ -49,6 +49,8 @@ Updated:
 ### Container Diagram
 App Diagram: Mobile app module is missing. API Gateway, Restaurant, Order management are found but in different names. While other services like Customer, Rider, Admin are found hidden in different places, it is a bit hard to track which reduces consistency. Databases are found as well including cache.
 ![App Diagram](Designs/Image/Food%20Delivery%20Platform%20App%20Diagram.png)
+Updated:
+![Updated Context Diagram](Designs/UpdatedDiagrams/ContainersDiagram2.png)
 
 ### Component Diagrams
 3.1 Customer Service: Customer Service is missing but found as UserService. Which manages all users, not just customers. UserService covers all email, phone and validate and update profile(src/main/java/entity/User) but cannot delete. Covers customer’s submit and view specific rider rating, average rating and specific order 
@@ -64,6 +66,10 @@ App Diagram: Mobile app module is missing. API Gateway, Restaurant, Order manage
 ![Restaurant Service](Designs/Image/Restaurant%20Service.%20Component%20Diagram.png)
 
 There are some modules that were not mentioned in the C4 diagram, but appear on the implementation. There are also components that appear on the C4 diagram, but not in the implementation. There are components that were in the higher hierarchy but disappear in the lower diagrams. Overall, the diagram is quite inconsistent especially in payment components, but the consistency from the components diagram to implementation is okay despite some naming inconsistencies.
+
+Updated:
+![Updated Context Diagram](Designs/UpdatedDiagrams/WebFrontEndComponentDiagram2.png)
+![Updated Context Diagram](Designs/UpdatedDiagrams/BackEndComponenetDiagram2.png)
 
 ## 3. Reflections on Receiving the Handover Project
 
