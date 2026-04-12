@@ -105,6 +105,21 @@ describe('CustomerRegistration', () => {
     });
   });
 
+  it('falls back to a standard error message when registration throws an unknown error', async () => {
+    vi.mocked(authService.register).mockRejectedValueOnce(new Error('Network unavailable'));
+
+    render(<CustomerRegistration />);
+
+    fillForm();
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: 'password123' } });
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'password123' } });
+    fireEvent.submit(screen.getByRole('button', { name: /create account/i }).closest('form')!);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Network unavailable');
+    });
+  });
+
   it('navigates back to login from the header button', () => {
     render(<CustomerRegistration />);
 

@@ -1,6 +1,7 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import OrderTracking from './OrderTracking';
+import { toast } from 'sonner';
 
 // Mock dependencies
 const mockNavigate = vi.fn();
@@ -39,7 +40,11 @@ vi.mock('sonner', () => ({
   },
 }));
 
-const mockUser = { id: 123, username: 'customer1', role: 'CUSTOMER' };
+let mockUser: { id: number; username: string; role: string } | null = {
+  id: 123,
+  username: 'customer1',
+  role: 'CUSTOMER',
+};
 vi.mock('../../contexts/AppContext', () => ({
   useApp: () => ({ user: mockUser }),
 }));
@@ -51,7 +56,8 @@ const createMockOrder = (
   status: string,
   items: Array<{ menuItemName: string; quantity: number; totalPrice: number }>,
   totalAmount: number,
-  deliveryAddress: string
+  deliveryAddress: string,
+  overrides: Record<string, unknown> = {}
 ) => ({
   id,
   orderNumber,
@@ -61,17 +67,24 @@ const createMockOrder = (
   totalAmount,
   deliveryAddress,
   orderItems: items.map((item, idx) => ({ id: idx + 1, ...item })),
+  ...overrides,
 });
 
 describe('OrderTracking', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
+    mockUser = { id: 123, username: 'customer1', role: 'CUSTOMER' };
     mockSubmitRestaurantReview.mockResolvedValue({
       id: '501',
       rating: 5,
       reviewText: 'Excellent service',
       createdAt: '2024-01-15T12:00:00',
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders loading state initially', () => {
@@ -251,6 +264,88 @@ describe('OrderTracking', () => {
     });
   });
 
+  it('shows an existing review instead of the composer once an order is already reviewed', async () => {
+    mockGetCustomerOrders.mockResolvedValue({
+      content: [
+        createMockOrder(
+          4,
+          '004',
+          'DELIVERED',
+          [{ menuItemName: 'Massaman Curry', quantity: 1, totalPrice: 160 }],
+          160,
+          '88 Review Ave',
+          {
+            restaurantReviewId: 99,
+            restaurantRating: 5,
+            restaurantReviewText: 'Perfect meal',
+          }
+        ),
+      ],
+    });
+
+    render(<OrderTracking />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Your review has been submitted')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Perfect meal')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /submit review/i })).not.toBeInTheDocument();
+  });
+
+  it('shows a toast error when review submission fails', async () => {
+    mockSubmitRestaurantReview.mockRejectedValueOnce(new Error('Unable to submit review'));
+    mockGetCustomerOrders.mockResolvedValue({
+      content: [
+        createMockOrder(5, '005', 'DELIVERED', [
+          { menuItemName: 'Pad See Ew', quantity: 1, totalPrice: 145 },
+        ], 145, '17 Failure Rd'),
+      ],
+    });
+
+    render(<OrderTracking />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Rate this order')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /submit review/i }));
+
+    await waitFor(() => {
+      expect(mockSubmitRestaurantReview).toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith('Unable to submit review');
+    });
+  });
+
+  it('updates picked up orders to delivered after enough tracking intervals', async () => {
+    mockGetCustomerOrders.mockResolvedValue({
+      content: [
+        createMockOrder(9, '009', 'PICKED_UP', [
+          { menuItemName: 'Khao Man Gai', quantity: 1, totalPrice: 120 },
+        ], 120, '789 Delivery Rd'),
+      ],
+    });
+
+    render(<OrderTracking />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #009')).toBeInTheDocument();
+    });
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: /view details/i }));
+
+    expect(screen.getByText('Mock Live Tracking Map')).toBeInTheDocument();
+    expect(screen.getAllByText('Picked Up').length).toBeGreaterThan(0);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30000);
+    });
+
+    expect(screen.getAllByText('Delivered').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Arrived').length).toBeGreaterThan(0);
+  });
+
   it('navigates back to restaurants when Back button is clicked', async () => {
     mockGetCustomerOrders.mockResolvedValue({ content: [] });
     
@@ -284,5 +379,17 @@ describe('OrderTracking', () => {
     await waitFor(() => {
       expect(mockGetCustomerOrders).toHaveBeenCalledWith('123');
     });
+  });
+
+  it('does not fetch orders when there is no signed-in user', async () => {
+    mockUser = null;
+
+    render(<OrderTracking />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No orders yet')).toBeInTheDocument();
+    });
+
+    expect(mockGetCustomerOrders).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router';
 import { format } from 'date-fns';
 import {
@@ -55,6 +55,7 @@ type TrackingSnapshot = {
 const DELIVERY_SPEED_KMH = 24;
 const MOCK_UPDATE_MS = 5000;
 const ARRIVAL_RADIUS_KM = 0.15;
+const MAX_DELIVERY_STEP = 6;
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -71,6 +72,39 @@ function getSeed(order: Order) {
 
 function getEffectiveStatus(order: Order, overrides: Record<string, OrderStatus>) {
   return overrides[String(order.id)] ?? order.status;
+}
+
+function markOrderDelivered(
+  orderKey: string,
+  setStatusOverrides: Dispatch<SetStateAction<Record<string, OrderStatus>>>
+) {
+  setStatusOverrides(currentStatuses => ({
+    ...currentStatuses,
+    [orderKey]: OrderStatus.DELIVERED,
+  }));
+}
+
+function getNextDeliveryStep(orderKey: string, currentSteps: Record<string, number>) {
+  return Math.min((currentSteps[orderKey] ?? 0) + 1, MAX_DELIVERY_STEP);
+}
+
+function buildNextDeliverySteps(
+  order: Order,
+  orderKey: string,
+  currentSteps: Record<string, number>,
+  setStatusOverrides: Dispatch<SetStateAction<Record<string, OrderStatus>>>
+) {
+  const nextStep = getNextDeliveryStep(orderKey, currentSteps);
+  const nextSnapshot = createTrackingSnapshot(order, nextStep, OrderStatus.PICKED_UP);
+
+  if (nextSnapshot.arrived) {
+    markOrderDelivered(orderKey, setStatusOverrides);
+  }
+
+  return {
+    ...currentSteps,
+    [orderKey]: nextStep,
+  };
 }
 
 function createTrackingSnapshot(order: Order, step: number, status: OrderStatus): TrackingSnapshot {
@@ -151,7 +185,14 @@ function calculateDistanceKm(start: Point, end: Point) {
   return earthRadiusKm * c;
 }
 
-function toMapPosition(point: Point, bounds: { minLat: number; maxLat: number; minLng: number; maxLng: number }) {
+type MapBounds = Readonly<{
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+}>;
+
+function toMapPosition(point: Point, bounds: MapBounds) {
   const x = ((point.lng - bounds.minLng) / (bounds.maxLng - bounds.minLng || 1)) * 100;
   const y = ((bounds.maxLat - point.lat) / (bounds.maxLat - bounds.minLat || 1)) * 100;
   return {
@@ -160,7 +201,11 @@ function toMapPosition(point: Point, bounds: { minLat: number; maxLat: number; m
   };
 }
 
-function DeliveryMap({ snapshot }: { snapshot: TrackingSnapshot }) {
+type DeliveryMapProps = Readonly<{
+  snapshot: TrackingSnapshot;
+}>;
+
+function DeliveryMap({ snapshot }: DeliveryMapProps) {
   const padding = 0.01;
   const bounds = {
     minLat: Math.min(snapshot.restaurant.lat, snapshot.customer.lat, snapshot.rider.lat) - padding,
@@ -246,15 +291,17 @@ function DeliveryMap({ snapshot }: { snapshot: TrackingSnapshot }) {
   );
 }
 
+type StarPickerProps = Readonly<{
+  value: number;
+  onChange: (value: number) => void;
+  disabled?: boolean;
+}>;
+
 function StarPicker({
   value,
   onChange,
   disabled = false,
-}: {
-  value: number;
-  onChange: (value: number) => void;
-  disabled?: boolean;
-}) {
+}: StarPickerProps) {
   return (
     <div className="flex items-center gap-1">
       {[1, 2, 3, 4, 5].map((starValue) => (
@@ -275,15 +322,17 @@ function StarPicker({
   );
 }
 
+type ReviewComposerProps = Readonly<{
+  order: Order;
+  customerId: string;
+  onSubmitted: (updatedOrder: Order) => void;
+}>;
+
 function ReviewComposer({
   order,
   customerId,
   onSubmitted,
-}: {
-  order: Order;
-  customerId: string;
-  onSubmitted: (updatedOrder: Order) => void;
-}) {
+}: ReviewComposerProps) {
   const [rating, setRating] = useState(order.restaurantRating ?? 5);
   const [reviewText, setReviewText] = useState(order.restaurantReviewText ?? '');
   const [submitting, setSubmitting] = useState(false);
@@ -401,22 +450,9 @@ export default function OrderTracking() {
 
     const orderKey = String(selectedOrder.id);
     const interval = window.setInterval(() => {
-      setDeliverySteps(current => {
-        const nextStep = Math.min((current[orderKey] ?? 0) + 1, 6);
-        const nextSnapshot = createTrackingSnapshot(selectedOrder, nextStep, OrderStatus.PICKED_UP);
-
-        if (nextSnapshot.arrived) {
-          setStatusOverrides(statusMap => ({
-            ...statusMap,
-            [orderKey]: OrderStatus.DELIVERED,
-          }));
-        }
-
-        return {
-          ...current,
-          [orderKey]: nextStep,
-        };
-      });
+      setDeliverySteps(current =>
+        buildNextDeliverySteps(selectedOrder, orderKey, current, setStatusOverrides)
+      );
     }, MOCK_UPDATE_MS);
 
     return () => window.clearInterval(interval);
