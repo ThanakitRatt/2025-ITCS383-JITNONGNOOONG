@@ -1,6 +1,6 @@
 require('dotenv').config();
 const mysql = require('mysql2/promise');
-const fs = require('fs');
+const fs = require('node:fs');
 
 const parseBoolean = (value, defaultValue = false) => {
   if (value === undefined) {
@@ -25,7 +25,7 @@ const buildSslConfig = () => {
       process.env.DB_SSL_REJECT_UNAUTHORIZED || process.env.MYSQL_SSL_REJECT_UNAUTHORIZED,
       true
     ),
-    ...(caFromEnv ? { ca: caFromEnv.replace(/\\n/g, '\n') } : {}),
+    ...(caFromEnv ? { ca: caFromEnv.replaceAll('\\n', '\n') } : {}),
     ...(caPath ? { ca: fs.readFileSync(caPath, 'utf8') } : {}),
   };
 };
