@@ -169,11 +169,13 @@ export interface SearchFilters {
 class RestaurantService {
   private normalizeRestaurant(restaurant: any): Restaurant {
     const source = Array.isArray(restaurant) ? (restaurant[0] ?? {}) : (restaurant ?? {});
-    const safeName = typeof source.name === 'string'
-      ? source.name
-      : typeof source.restaurantName === 'string'
-        ? source.restaurantName
-        : 'Restaurant';
+    let safeName = 'Restaurant';
+
+    if (typeof source.name === 'string') {
+      safeName = source.name;
+    } else if (typeof source.restaurantName === 'string') {
+      safeName = source.restaurantName;
+    }
 
     return {
       ...source,

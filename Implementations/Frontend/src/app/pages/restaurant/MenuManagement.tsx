@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, type ComponentProps } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -10,6 +10,31 @@ import { ArrowLeft, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import restaurantService from '../../services/restaurant.service';
 import { useApp } from '../../contexts/AppContext';
+
+type FormSubmitEvent = Parameters<NonNullable<ComponentProps<'form'>['onSubmit']>>[0];
+
+function getMenuOperationErrorMessage(error: unknown) {
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'response' in error &&
+    typeof error.response === 'object' &&
+    error.response !== null &&
+    'data' in error.response &&
+    typeof error.response.data === 'object' &&
+    error.response.data !== null &&
+    'message' in error.response.data &&
+    typeof error.response.data.message === 'string'
+  ) {
+    return error.response.data.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Operation failed';
+}
 
 export default function MenuManagement() {
   const navigate = useNavigate();
@@ -120,8 +145,7 @@ export default function MenuManagement() {
     }
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const submitMenuItem = async () => {
     if (!restaurantId) {
       toast.error('Restaurant not loaded');
       return;
@@ -167,13 +191,17 @@ export default function MenuManagement() {
       
       setIsDialogOpen(false);
       setEditingItem(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Submit error:', error);
-      const errorMsg = error.response?.data?.message || error.message || 'Operation failed';
-      toast.error(errorMsg);
+      toast.error(getMenuOperationErrorMessage(error));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = (e: FormSubmitEvent) => {
+    e.preventDefault();
+    void submitMenuItem();
   };
 
   return (
