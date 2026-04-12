@@ -25,7 +25,7 @@ const buildSslConfig = () => {
       process.env.DB_SSL_REJECT_UNAUTHORIZED || process.env.MYSQL_SSL_REJECT_UNAUTHORIZED,
       true
     ),
-    ...(caFromEnv ? { ca: caFromEnv.replaceAll('\\n', '\n') } : {}),
+    ...(caFromEnv ? { ca: caFromEnv.replaceAll(String.raw`\n`, '\n') } : {}),
     ...(caPath ? { ca: fs.readFileSync(caPath, 'utf8') } : {}),
   };
 };
