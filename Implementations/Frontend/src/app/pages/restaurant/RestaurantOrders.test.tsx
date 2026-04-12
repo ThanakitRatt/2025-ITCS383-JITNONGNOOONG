@@ -91,6 +91,31 @@ const mockOrders = [
   },
 ];
 
+const fallbackOrders = [
+  {
+    id: '4',
+    orderNumber: 'ORD-004',
+    customerId: '4',
+    restaurantId: '2',
+    status: 'DELIVERED',
+    totalAmount: 90,
+    deliveryFee: 20,
+    deliveryAddress: 'Fallback Street',
+    createdAt: 'invalid-date',
+    items: [{ id: '9', name: 'Rice', quantity: 1, price: 90 }],
+  },
+  {
+    id: '5',
+    orderNumber: 'ORD-005',
+    restaurantId: '2',
+    status: 'REFUNDED',
+    totalAmount: 50,
+    deliveryFee: 0,
+    deliveryAddress: 'Unknown Street',
+    items: [],
+  },
+];
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(restaurantService.getOwnerRestaurants).mockResolvedValue([{ id: '2', name: 'Test Restaurant' } as any]);
@@ -206,6 +231,43 @@ describe('RestaurantOrders', () => {
     });
   });
 
+  it('falls back to customer id and unavailable date text when order metadata is incomplete', async () => {
+    vi.mocked(orderService.getRestaurantOrders).mockResolvedValueOnce({
+      content: fallbackOrders,
+      page: 0,
+      size: 20,
+      totalElements: 2,
+      totalPages: 1,
+    } as any);
+
+    render(<RestaurantOrders />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText((_, element) => element?.textContent === 'Customer: Customer #4').length).toBeGreaterThan(0);
+      expect(screen.getAllByText((_, element) => element?.textContent === 'Customer: Customer unavailable').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/date unavailable/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  it('shows a status badge instead of action buttons for terminal statuses', async () => {
+    vi.mocked(orderService.getRestaurantOrders).mockResolvedValueOnce({
+      content: fallbackOrders,
+      page: 0,
+      size: 20,
+      totalElements: 2,
+      totalPages: 1,
+    } as any);
+
+    render(<RestaurantOrders />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('DELIVERED').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('REFUNDED').length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByRole('button', { name: /mark as delivered/i })).not.toBeInTheDocument();
+  });
+
   it('shows empty state when no orders', async () => {
     vi.mocked(orderService.getRestaurantOrders).mockResolvedValueOnce({
       content: [],
@@ -260,6 +322,20 @@ describe('RestaurantOrders', () => {
         newStatus: 'CANCELLED',
         updatedBy: 2,
       });
+    });
+  });
+
+  it('shows an error toast when updating an order status fails', async () => {
+    vi.mocked(orderService.updateOrderStatus).mockRejectedValueOnce(new Error('Update failed'));
+
+    render(<RestaurantOrders />);
+
+    await expectOrderVisible('ORD-001');
+
+    fireEvent.click(screen.getByRole('button', { name: /confirm order/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to update order status');
     });
   });
 

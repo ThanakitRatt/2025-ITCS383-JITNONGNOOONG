@@ -64,6 +64,8 @@ export default function RestaurantDetail() {
   }
 
   const categories = Array.from(new Set(menu.filter(i => i.isAvailable).map(item => item.categoryName ?? 'Other')));
+  const reviewSummaryRating =
+    typeof restaurant.averageRating === 'number' ? restaurant.averageRating.toFixed(1) : 'N/A';
 
   const handleAddToCart = () => {
     if (selectedItem && restaurant) {
@@ -185,7 +187,7 @@ export default function RestaurantDetail() {
               <p className="text-sm uppercase tracking-wide text-gray-500">Customer Reviews</p>
               <div className="mt-2 flex items-center gap-3">
                 <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
-                <span className="text-2xl font-semibold">{restaurant.averageRating.toFixed(1)}</span>
+                <span className="text-2xl font-semibold">{reviewSummaryRating}</span>
                 <span className="text-sm text-gray-500">{restaurant.totalReviews ?? 0} total reviews</span>
               </div>
             </div>

@@ -77,12 +77,12 @@ const riderOrderItemsSelect = `
 `;
 
 const attachOrderItems = async (rows, queryText = baseOrderItemsSelect, includeSnakeCase = true) => {
-  for (let i = 0; i < rows.length; i += 1) {
-    const [items] = await db.query(queryText, [rows[i].id]);
+  for (const row of rows) {
+    const [items] = await db.query(queryText, [row.id]);
     if (includeSnakeCase) {
-      rows[i].order_items = items;
+      row.order_items = items;
     }
-    rows[i].orderItems = items;
+    row.orderItems = items;
   }
 
   return rows;

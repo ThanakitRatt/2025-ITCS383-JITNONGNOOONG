@@ -84,4 +84,40 @@ describe('RestaurantDashboard', () => {
       expect(screen.getByText(/18 customer reviews/i)).toBeInTheDocument();
     });
   });
+
+  it('shows no orders yet when the restaurant has no recent orders', async () => {
+    vi.mocked(orderService.getRestaurantOrders).mockResolvedValueOnce({ content: [] } as any);
+
+    render(<RestaurantDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no orders yet/i)).toBeInTheDocument();
+    });
+  });
+
+  it('uses paginated menu content length when menu data is not a plain array', async () => {
+    vi.mocked(restaurantService.getRestaurantMenu).mockResolvedValueOnce({
+      content: [{ id: 'M1' }, { id: 'M2' }],
+      totalElements: 7,
+    } as any);
+
+    render(<RestaurantDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2')).toBeInTheDocument();
+    });
+  });
+
+  it('falls back gracefully when no restaurant exists for the owner', async () => {
+    vi.mocked(restaurantService.getOwnerRestaurants).mockResolvedValueOnce([]);
+
+    render(<RestaurantDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/my restaurant/i)).toBeInTheDocument();
+      expect(screen.getByText(/no orders yet/i)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/customer rating/i)).not.toBeInTheDocument();
+  });
 });

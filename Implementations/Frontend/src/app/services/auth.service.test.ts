@@ -94,6 +94,12 @@ describe('verifyOtp', () => {
 
     await expect(verifyOtp({ email: 'unknown@example.com', otp: '123456' })).rejects.toThrow();
   });
+
+  it('rethrows error when mock OTP is not 6 digits long', async () => {
+    vi.mocked(apiClient.post).mockRejectedValueOnce(new Error('Network Error'));
+
+    await expect(verifyOtp({ email: 'admin@foodexpress.com', otp: '12345' })).rejects.toThrow();
+  });
 });
 
 // ========== register ==========
