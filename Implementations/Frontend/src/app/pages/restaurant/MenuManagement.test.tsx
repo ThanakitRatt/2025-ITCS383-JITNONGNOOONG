@@ -240,6 +240,17 @@ describe('MenuManagement', () => {
     });
   });
 
+  it('shows category guidance when no categories exist', async () => {
+    vi.mocked(restaurantService.getRestaurantCategories).mockResolvedValueOnce([]);
+
+    render(<MenuManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no categories yet\. create categories first\./i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /manage categories/i })).toBeInTheDocument();
+    });
+  });
+
   it('navigates back when clicking back button', async () => {
     render(<MenuManagement />);
     

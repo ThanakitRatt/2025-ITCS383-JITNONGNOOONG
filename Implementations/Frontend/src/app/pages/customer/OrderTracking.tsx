@@ -115,10 +115,15 @@ function createTrackingSnapshot(order: Order, step: number, status: OrderStatus)
 
   let phaseLabel = 'Waiting for pickup';
   if (status === OrderStatus.PICKED_UP) {
-    phaseLabel = progress < 0.45 ? 'Rider just picked up your order' :
-      progress < 0.8 ? 'Rider is on the way' :
-      arrived ? 'Rider arrived at your address' :
-      'Rider is nearby';
+    if (progress < 0.45) {
+      phaseLabel = 'Rider just picked up your order';
+    } else if (progress < 0.8) {
+      phaseLabel = 'Rider is on the way';
+    } else if (arrived) {
+      phaseLabel = 'Rider arrived at your address';
+    } else {
+      phaseLabel = 'Rider is nearby';
+    }
   }
 
   return {

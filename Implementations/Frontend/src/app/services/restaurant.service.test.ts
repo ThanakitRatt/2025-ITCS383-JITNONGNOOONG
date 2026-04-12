@@ -69,6 +69,49 @@ describe('searchRestaurants', () => {
     expect(apiClient.get).toHaveBeenCalledOnce();
   });
 
+  it('normalizes array payload responses into paginated results', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce(
+      fakeResponse([
+        {
+          id: 2,
+          restaurantName: 'Fallback Name',
+          cuisine_type: 'ITALIAN',
+          phone_number: '+66-2-222-3333',
+          address: '456 Side St',
+          is_active: 1,
+          average_rating: '4.8',
+        },
+      ]),
+    );
+
+    const result = await restaurantService.searchRestaurants({ searchTerm: 'pizza' });
+
+    expect(result).toEqual({
+      content: [
+        {
+          id: '2',
+          restaurantName: 'Fallback Name',
+          name: 'Fallback Name',
+          cuisine_type: 'ITALIAN',
+          cuisineType: 'ITALIAN',
+          phone_number: '+66-2-222-3333',
+          phoneNumber: '+66-2-222-3333',
+          address: '456 Side St',
+          is_active: 1,
+          isActive: 1,
+          average_rating: '4.8',
+          averageRating: 4.8,
+        },
+      ],
+      totalElements: 1,
+      totalPages: 1,
+      size: 1,
+      number: 0,
+      first: true,
+      last: true,
+    });
+  });
+
   it('rethrows on API error', async () => {
     vi.mocked(apiClient.get).mockRejectedValueOnce(new Error('server error'));
 
@@ -85,6 +128,37 @@ describe('getRestaurantById', () => {
 
     expect(result).toEqual(mockRestaurant);
     expect(apiClient.get).toHaveBeenCalledOnce();
+  });
+
+  it('normalizes array-based restaurant payloads', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce(
+      fakeResponse([
+        {
+          id: 3,
+          cuisine_type: 'JAPANESE',
+          address: '789 Market St',
+          phone_number: '+66-2-333-4444',
+          is_active: false,
+          average_rating: '3.9',
+        },
+      ] as any),
+    );
+
+    const result = await restaurantService.getRestaurantById('3');
+
+    expect(result).toEqual({
+      id: '3',
+      name: 'Restaurant',
+      cuisine_type: 'JAPANESE',
+      cuisineType: 'JAPANESE',
+      address: '789 Market St',
+      phone_number: '+66-2-333-4444',
+      phoneNumber: '+66-2-333-4444',
+      is_active: false,
+      isActive: false,
+      average_rating: '3.9',
+      averageRating: 3.9,
+    });
   });
 
   it('rethrows on API error', async () => {
@@ -125,6 +199,88 @@ describe('getCuisineTypes', () => {
     vi.mocked(apiClient.get).mockRejectedValueOnce(new Error('error'));
 
     await expect(restaurantService.getCuisineTypes()).rejects.toThrow();
+  });
+});
+
+// ========== reviews ==========
+describe('getRestaurantReviews', () => {
+  it('normalizes restaurant reviews', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce(
+      fakeResponse([
+        {
+          id: 1,
+          restaurant_id: 3,
+          order_id: 10,
+          customer_id: 8,
+          customer_name: 'Alice',
+          rating: '5',
+          review_text: 'Great food',
+          created_at: '2025-01-01T12:00:00Z',
+        },
+      ] as any),
+    );
+
+    const result = await restaurantService.getRestaurantReviews('3', 'highest');
+
+    expect(result).toEqual([
+      {
+        id: '1',
+        restaurant_id: 3,
+        restaurantId: '3',
+        order_id: 10,
+        orderId: '10',
+        customer_id: 8,
+        customerId: '8',
+        customer_name: 'Alice',
+        customerName: 'Alice',
+        rating: 5,
+        review_text: 'Great food',
+        reviewText: 'Great food',
+        created_at: '2025-01-01T12:00:00Z',
+        createdAt: '2025-01-01T12:00:00Z',
+      },
+    ]);
+  });
+});
+
+describe('submitRestaurantReview', () => {
+  it('normalizes the submitted review response', async () => {
+    vi.mocked(apiClient.post).mockResolvedValueOnce(
+      fakeResponse({
+        id: 5,
+        restaurant_id: 3,
+        order_id: 11,
+        customer_id: 8,
+        customer_name: 'Alice',
+        rating: 4,
+        review_text: 'Nice',
+        created_at: '2025-01-02T12:00:00Z',
+      } as any),
+    );
+
+    const result = await restaurantService.submitRestaurantReview('3', {
+      orderId: '11',
+      customerId: '8',
+      rating: 4,
+      reviewText: 'Nice',
+    });
+
+    expect(result).toEqual({
+      id: '5',
+      restaurant_id: 3,
+      restaurantId: '3',
+      order_id: 11,
+      orderId: '11',
+      customer_id: 8,
+      customerId: '8',
+      customer_name: 'Alice',
+      customerName: 'Alice',
+      rating: 4,
+      review_text: 'Nice',
+      reviewText: 'Nice',
+      created_at: '2025-01-02T12:00:00Z',
+      createdAt: '2025-01-02T12:00:00Z',
+    });
   });
 });
 
@@ -316,6 +472,22 @@ describe('updateRestaurantStatus', () => {
     vi.mocked(apiClient.put).mockRejectedValueOnce(new Error('error'));
 
     await expect(restaurantService.updateRestaurantStatus('1', 'INACTIVE')).rejects.toThrow();
+  });
+});
+
+describe('toggleRestaurantAvailability', () => {
+  it('returns the updated restaurant availability', async () => {
+    vi.mocked(apiClient.put).mockResolvedValueOnce(fakeResponse({ ...mockRestaurant, acceptsOrders: false }));
+
+    const result = await restaurantService.toggleRestaurantAvailability('1', false);
+
+    expect(result).toEqual({ ...mockRestaurant, acceptsOrders: false });
+  });
+});
+
+describe('calculateDistance', () => {
+  it('returns rounded distance in kilometers', () => {
+    expect(restaurantService.calculateDistance(13.7563, 100.5018, 13.7367, 100.5231)).toBeGreaterThan(0);
   });
 });
 

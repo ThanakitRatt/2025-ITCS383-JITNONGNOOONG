@@ -58,7 +58,31 @@ beforeEach(() => {
 // ========== createOrder ==========
 describe('createOrder', () => {
   it('returns the created order', async () => {
-    vi.mocked(apiClient.post).mockResolvedValueOnce(fakeResponse(mockOrder));
+    vi.mocked(apiClient.post).mockResolvedValueOnce(
+      fakeResponse({
+        id: '1',
+        order_number: 'MR-0001',
+        customer_id: '100',
+        restaurant_id: '10',
+        status: 'PENDING',
+        total_amount: '350',
+        delivery_fee: '0',
+        delivery_address: '123 Test St',
+        created_at: '2025-01-01T10:00:00Z',
+        order_items: [
+          {
+            id: 1,
+            order_id: 1,
+            menu_item_id: 7,
+            menu_item_name: 'Pad Thai',
+            quantity: 2,
+            unit_price: 120,
+            total_price: 240,
+            special_instructions: 'No peanuts',
+          },
+        ],
+      } as any),
+    );
 
     const result = await orderService.createOrder({
       customerId: '100',
@@ -67,7 +91,23 @@ describe('createOrder', () => {
       orderItems: [],
     });
 
-    expect(result).toEqual(mockOrder);
+    expect(result).toEqual(
+      expect.objectContaining({
+        ...mockOrder,
+        orderItems: [
+          expect.objectContaining({
+            id: '1',
+            orderId: '1',
+            menuItemId: '7',
+            menuItemName: 'Pad Thai',
+            quantity: 2,
+            unitPrice: 120,
+            totalPrice: 240,
+            specialRequests: 'No peanuts',
+          }),
+        ],
+      }),
+    );
     expect(apiClient.post).toHaveBeenCalledOnce();
   });
 
@@ -105,6 +145,16 @@ describe('getOrderById', () => {
     vi.mocked(apiClient.get).mockRejectedValueOnce(new Error('not found'));
 
     await expect(orderService.getOrderById(999)).rejects.toThrow();
+  });
+
+  it('returns the order unchanged when customer enrichment fails', async () => {
+    vi.mocked(apiClient.get)
+      .mockResolvedValueOnce(fakeResponse(mockOrder))
+      .mockRejectedValueOnce(new Error('customer lookup failed'));
+
+    const result = await orderService.getOrderById(1);
+
+    expect(result).toEqual(mockOrder);
   });
 });
 
@@ -262,6 +312,13 @@ describe('getRiderOrders', () => {
     vi.mocked(apiClient.get).mockRejectedValueOnce(new Error('error'));
 
     await expect(orderService.getRiderOrders(200)).rejects.toThrow();
+  });
+});
+
+describe('fallback mappings', () => {
+  it('returns fallback text and color for unknown statuses', () => {
+    expect(orderService.getStatusText('UNKNOWN' as OrderStatus)).toBe('UNKNOWN');
+    expect(orderService.getStatusColor('UNKNOWN' as OrderStatus)).toBe('text-gray-600');
   });
 });
 
