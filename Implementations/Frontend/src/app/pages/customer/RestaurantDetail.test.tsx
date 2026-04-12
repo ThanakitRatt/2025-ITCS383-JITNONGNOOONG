@@ -23,6 +23,7 @@ vi.mock('../../services/restaurant.service', () => ({
   default: {
     getRestaurantById: vi.fn(),
     getRestaurantMenu: vi.fn(),
+    getRestaurantReviews: vi.fn(),
   },
 }));
 
@@ -71,6 +72,18 @@ const mockMenu = [
 beforeEach(() => {
   vi.mocked(restaurantService.getRestaurantById).mockResolvedValue(mockRestaurant as any);
   vi.mocked(restaurantService.getRestaurantMenu).mockResolvedValue(mockMenu as any);
+  vi.mocked(restaurantService.getRestaurantReviews).mockResolvedValue([
+    {
+      id: 'RV1',
+      restaurantId: '1',
+      orderId: 'O1',
+      customerId: 'C1',
+      customerName: 'Jane',
+      rating: 5,
+      reviewText: 'Loved it',
+      createdAt: '2024-01-16T10:00:00',
+    },
+  ] as any);
 });
 
 describe('RestaurantDetail', () => {
@@ -102,6 +115,12 @@ describe('RestaurantDetail', () => {
     it('renders minimumOrderAmount from restaurant data', () => {
       // minimumOrderAmount: 100 should appear somewhere (e.g. "Min order ฿100")
       expect(screen.getByText(/100/)).toBeInTheDocument();
+    });
+
+    it('renders reviews and rating summary', () => {
+      expect(screen.getByText(/50 total reviews/i)).toBeInTheDocument();
+      expect(screen.getByText('Jane')).toBeInTheDocument();
+      expect(screen.getByText('Loved it')).toBeInTheDocument();
     });
   });
 

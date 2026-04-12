@@ -70,12 +70,20 @@ describe('createOrder', () => {
 // ========== getOrderById ==========
 describe('getOrderById', () => {
   it('returns order by id', async () => {
-    vi.mocked(apiClient.get).mockResolvedValueOnce(fakeResponse(mockOrder));
+    vi.mocked(apiClient.get)
+      .mockResolvedValueOnce(fakeResponse(mockOrder))
+      .mockResolvedValueOnce(
+        fakeResponse({ id: 100, name: 'John Doe', phoneNumber: '+66812345678' }),
+      );
 
     const result = await orderService.getOrderById(1);
 
-    expect(result).toEqual(mockOrder);
-    expect(apiClient.get).toHaveBeenCalledOnce();
+    expect(result).toEqual({
+      ...mockOrder,
+      customerName: 'John Doe',
+      customerPhoneNumber: '+66812345678',
+    });
+    expect(apiClient.get).toHaveBeenCalledTimes(2);
   });
 
   it('rethrows on API error', async () => {

@@ -31,6 +31,7 @@ export interface Restaurant {
   isActive: boolean;
   acceptsOrders?: boolean;
   averageRating: number;
+  totalReviews?: number;
   logoUrl?: string;
   coverImageUrl?: string;
   minimumOrderAmount?: number;
@@ -66,6 +67,26 @@ export interface MenuCategory {
   name: string;
   description?: string;
   displayOrder: number;
+}
+
+export interface RestaurantReview {
+  id: string;
+  restaurantId: string;
+  orderId: string;
+  customerId: string;
+  customerName: string;
+  rating: number;
+  reviewText?: string;
+  createdAt: string;
+}
+
+export type ReviewSort = 'recent' | 'highest' | 'lowest';
+
+export interface CreateRestaurantReviewRequest {
+  orderId: string;
+  customerId: string;
+  rating: number;
+  reviewText?: string;
 }
 
 export interface CreateRestaurantRequest {
@@ -146,6 +167,51 @@ export interface SearchFilters {
  * Restaurant Service Class
  */
 class RestaurantService {
+  private normalizeRestaurant(restaurant: any): Restaurant {
+    const source = Array.isArray(restaurant) ? (restaurant[0] ?? {}) : (restaurant ?? {});
+    const safeName = typeof source.name === 'string'
+      ? source.name
+      : typeof source.restaurantName === 'string'
+        ? source.restaurantName
+        : 'Restaurant';
+
+    return {
+      ...source,
+      id: String(source.id ?? ''),
+      name: safeName,
+      description: source.description,
+      address: source.address,
+      cuisineType: typeof (source.cuisineType ?? source.cuisine_type) === 'string' ? (source.cuisineType ?? source.cuisine_type) : source.cuisineType,
+      phoneNumber: typeof (source.phoneNumber ?? source.phone_number) === 'string' ? (source.phoneNumber ?? source.phone_number) : source.phoneNumber,
+      ownerId: source.ownerId ?? source.owner_id ?? source.ownerId,
+      isActive: source.isActive ?? source.is_active ?? source.isActive,
+      acceptsOrders: source.acceptsOrders ?? source.accepts_orders,
+      averageRating: Number(source.averageRating ?? source.average_rating ?? 0),
+      totalReviews: source.totalReviews ?? source.total_reviews,
+      logoUrl: source.logoUrl ?? source.logo_url,
+      coverImageUrl: source.coverImageUrl ?? source.cover_image_url,
+      minimumOrderAmount: source.minimumOrderAmount ?? source.minimum_order_amount,
+      deliveryFee: source.deliveryFee ?? source.delivery_fee,
+      estimatedDeliveryTime: source.estimatedDeliveryTime ?? source.estimated_delivery_time,
+      openingTime: source.openingTime ?? source.opening_time,
+      closingTime: source.closingTime ?? source.closing_time,
+    };
+  }
+
+  private normalizeReview(review: any): RestaurantReview {
+    return {
+      ...review,
+      id: String(review.id),
+      restaurantId: String(review.restaurantId ?? review.restaurant_id),
+      orderId: String(review.orderId ?? review.order_id),
+      customerId: String(review.customerId ?? review.customer_id),
+      customerName: review.customerName ?? review.customer_name ?? 'Customer',
+      rating: Number(review.rating ?? 0),
+      reviewText: review.reviewText ?? review.review_text,
+      createdAt: review.createdAt ?? review.created_at,
+    };
+  }
+
   /**
    * Get all restaurants with pagination
    */
@@ -163,7 +229,10 @@ class RestaurantService {
         }
       );
       
-      return response.data.data;
+      return {
+        ...response.data.data,
+        content: (response.data.data.content ?? []).map((restaurant) => this.normalizeRestaurant(restaurant)),
+      };
     } catch (error) {
       console.error('Failed to fetch restaurants:', handleApiError(error));
       throw error;
@@ -178,11 +247,21 @@ class RestaurantService {
       const response = await apiClient.get<ApiResponse<PaginatedResponse<Restaurant>>>(
         API_ENDPOINTS.RESTAURANTS.SEARCH,
         {
-          params: filters,
+          params: {
+            ...filters,
+            query: filters.searchTerm,
+            cuisine: filters.cuisineType,
+          },
         }
       );
       
-      return response.data.data;
+      const payload = response.data.data;
+      const content = Array.isArray(payload) ? payload : payload.content ?? [];
+
+      return {
+        ...(Array.isArray(payload) ? { content, totalElements: content.length, totalPages: 1, size: content.length, number: 0, first: true, last: true } : payload),
+        content: content.map((restaurant: any) => this.normalizeRestaurant(restaurant)),
+      };
     } catch (error) {
       console.error('Failed to search restaurants:', handleApiError(error));
       throw error;
@@ -198,9 +277,45 @@ class RestaurantService {
         API_ENDPOINTS.RESTAURANTS.BY_ID(id)
       );
       
-      return response.data.data;
+      return this.normalizeRestaurant(response.data.data);
     } catch (error) {
       console.error(`Failed to fetch restaurant ${id}:`, handleApiError(error));
+      throw error;
+    }
+  }
+
+  async getRestaurantReviews(
+    restaurantId: string,
+    sort: ReviewSort = 'recent'
+  ): Promise<RestaurantReview[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<RestaurantReview[]>>(
+        API_ENDPOINTS.RESTAURANTS.REVIEWS(restaurantId),
+        {
+          params: { sort },
+        }
+      );
+
+      return response.data.data.map((review) => this.normalizeReview(review));
+    } catch (error) {
+      console.error(`Failed to fetch reviews for restaurant ${restaurantId}:`, handleApiError(error));
+      throw error;
+    }
+  }
+
+  async submitRestaurantReview(
+    restaurantId: string,
+    reviewData: CreateRestaurantReviewRequest
+  ): Promise<RestaurantReview> {
+    try {
+      const response = await apiClient.post<ApiResponse<RestaurantReview>>(
+        API_ENDPOINTS.RESTAURANTS.REVIEWS(restaurantId),
+        reviewData
+      );
+
+      return this.normalizeReview(response.data.data);
+    } catch (error) {
+      console.error(`Failed to submit review for restaurant ${restaurantId}:`, handleApiError(error));
       throw error;
     }
   }
@@ -221,7 +336,10 @@ class RestaurantService {
         }
       );
       
-      return response.data.data;
+      return {
+        ...response.data.data,
+        content: (response.data.data.content ?? []).map((restaurant) => this.normalizeRestaurant(restaurant)),
+      };
     } catch (error) {
       console.error(`Failed to fetch ${cuisineType} restaurants:`, handleApiError(error));
       throw error;

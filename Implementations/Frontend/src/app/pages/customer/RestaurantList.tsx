@@ -53,6 +53,12 @@ export default function RestaurantList() {
 
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const getRestaurantName = (restaurant: Restaurant) => (
+    typeof restaurant.name === 'string' && restaurant.name.trim().length > 0
+      ? restaurant.name
+      : 'Restaurant'
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -139,7 +145,7 @@ export default function RestaurantList() {
                   <div className="relative h-48 overflow-hidden rounded-t-lg">
                     <ImageWithFallback
                       src={restaurant.coverImageUrl ?? restaurant.logoUrl ?? ''}
-                      alt={restaurant.name}
+                      alt={getRestaurantName(restaurant)}
                       className="w-full h-full object-cover"
                     />
                     <Badge className="absolute top-2 right-2">
@@ -147,11 +153,12 @@ export default function RestaurantList() {
                     </Badge>
                   </div>
                   <CardContent className="pt-4">
-                    <h3 className="font-semibold mb-2">{restaurant.name}</h3>
+                    <h3 className="font-semibold mb-2">{getRestaurantName(restaurant)}</h3>
                     <div className="space-y-1 text-sm text-gray-600">
                       <div className="flex items-center gap-1">
                         <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                        <span>{restaurant.averageRating?.toFixed(1) ?? 'New'}</span>
+                        <span>{restaurant.totalReviews ? restaurant.averageRating?.toFixed(1) : 'New'}</span>
+                        <span className="text-xs text-gray-500">({restaurant.totalReviews ?? 0})</span>
                       </div>
                       {!!restaurant.estimatedDeliveryTime && (
                         <div className="flex items-center gap-1">

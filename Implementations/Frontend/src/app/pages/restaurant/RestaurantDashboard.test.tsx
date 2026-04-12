@@ -9,6 +9,7 @@ vi.mock('react-router', () => ({
 vi.mock('../../contexts/AppContext', () => ({
   useApp: () => ({
     user: { id: 'R1', role: 'restaurant', name: 'My Restaurant', email: 'r@test.com' },
+    logout: vi.fn(),
   }),
 }));
 
@@ -41,7 +42,9 @@ const todayOrder = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(restaurantService.getOwnerRestaurants).mockResolvedValue([{ id: 'R1', name: 'My Restaurant' } as any]);
+  vi.mocked(restaurantService.getOwnerRestaurants).mockResolvedValue([
+    { id: 'R1', name: 'My Restaurant', averageRating: 4.7, totalReviews: 18 } as any,
+  ]);
   vi.mocked(restaurantService.getRestaurantMenu).mockResolvedValue([]);
   vi.mocked(orderService.getRestaurantOrders).mockResolvedValue({ content: [todayOrder] } as any);
 });
@@ -71,6 +74,14 @@ describe('RestaurantDashboard', () => {
     render(<RestaurantDashboard />);
     await waitFor(() => {
       expect(screen.getByText(/recent orders/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows the average rating card and summary', async () => {
+    render(<RestaurantDashboard />);
+    await waitFor(() => {
+      expect(screen.getAllByText(/4\.7/).length).toBeGreaterThan(0);
+      expect(screen.getByText(/18 customer reviews/i)).toBeInTheDocument();
     });
   });
 });

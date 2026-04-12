@@ -8,6 +8,49 @@ const successResponse = (data, message = 'Success') => ({
   data
 });
 
+const baseOrderSelect = `
+  SELECT
+    o.id,
+    o.order_number AS orderNumber,
+    o.customer_id AS customerId,
+    o.restaurant_id AS restaurantId,
+    o.rider_id AS riderId,
+    o.status,
+    o.total_amount AS totalAmount,
+    o.delivery_fee AS deliveryFee,
+    o.delivery_address AS deliveryAddress,
+    o.delivery_latitude AS deliveryLatitude,
+    o.delivery_longitude AS deliveryLongitude,
+    o.special_instructions AS specialInstructions,
+    o.estimated_delivery_time AS estimatedDeliveryTime,
+    o.actual_delivery_time AS actualDeliveryTime,
+    o.created_at AS createdAt,
+    o.updated_at AS updatedAt,
+    r.name AS restaurantName,
+    rr.id AS restaurantReviewId,
+    rr.rating AS restaurantRating,
+    rr.review_text AS restaurantReviewText,
+    rr.created_at AS restaurantReviewedAt
+  FROM orders o
+  LEFT JOIN restaurants r ON o.restaurant_id = r.id
+  LEFT JOIN restaurant_reviews rr ON rr.order_id = o.id
+`;
+
+const baseOrderItemsSelect = `
+  SELECT
+    oi.id,
+    oi.order_id AS orderId,
+    oi.menu_item_id AS menuItemId,
+    COALESCE(mi.name, oi.menu_item_name) AS menuItemName,
+    oi.quantity,
+    oi.unit_price AS unitPrice,
+    oi.total_price AS totalPrice,
+    oi.special_instructions AS specialRequests
+  FROM order_items oi
+  LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id
+  WHERE oi.order_id = ?
+`;
+
 // Admin Stats
 router.get('/admin/stats', async (req, res) => {
   try {
@@ -114,22 +157,17 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
   try {
     const targetRestaurantId = req.params.restaurantId === "100" ? 1 : req.params.restaurantId;
     
-    const [rows] = await db.query(`
-      SELECT o.*, r.name as restaurant_name 
-      FROM orders o 
-      LEFT JOIN restaurants r ON o.restaurant_id = r.id 
-      WHERE o.restaurant_id = ? 
-      ORDER BY o.created_at DESC
-    `, [targetRestaurantId]);
+    const [rows] = await db.query(
+      `${baseOrderSelect}
+       WHERE o.restaurant_id = ?
+       ORDER BY o.created_at DESC`,
+      [targetRestaurantId]
+    );
 
     for (let i = 0; i < rows.length; i++) {
-      const [items] = await db.query(`
-        SELECT oi.*, mi.name as menu_item_name 
-        FROM order_items oi 
-        LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id 
-        WHERE oi.order_id = ?
-      `, [rows[i].id]);
+      const [items] = await db.query(baseOrderItemsSelect, [rows[i].id]);
       rows[i].order_items = items;
+      rows[i].orderItems = items;
     }
     
     res.json(successResponse({
@@ -148,22 +186,17 @@ router.get('/restaurant/:restaurantId', async (req, res) => {
 
 router.get('/customer/:customerId', async (req, res) => {
   try {
-    const [rows] = await db.query(`
-      SELECT o.*, r.name as restaurant_name 
-      FROM orders o 
-      LEFT JOIN restaurants r ON o.restaurant_id = r.id 
-      WHERE o.customer_id = ? 
-      ORDER BY o.created_at DESC
-    `, [req.params.customerId === "100" ? 1 : req.params.customerId]);
+    const [rows] = await db.query(
+      `${baseOrderSelect}
+       WHERE o.customer_id = ?
+       ORDER BY o.created_at DESC`,
+      [req.params.customerId === "100" ? 1 : req.params.customerId]
+    );
 
     for (let i = 0; i < rows.length; i++) {
-      const [items] = await db.query(`
-        SELECT oi.*, mi.name as menu_item_name 
-        FROM order_items oi 
-        LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id 
-        WHERE oi.order_id = ?
-      `, [rows[i].id]);
+      const [items] = await db.query(baseOrderItemsSelect, [rows[i].id]);
       rows[i].order_items = items;
+      rows[i].orderItems = items;
     }
     res.json(successResponse({
       content: rows,
@@ -256,16 +289,41 @@ router.get('/rider/:riderId', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const [orders] = await db.query(`
-      SELECT o.*, r.name as restaurant_name 
-      FROM orders o 
-      LEFT JOIN restaurants r ON o.restaurant_id = r.id 
+      SELECT
+        o.id,
+        o.order_number AS orderNumber,
+        o.customer_id AS customerId,
+        o.restaurant_id AS restaurantId,
+        o.rider_id AS riderId,
+        o.status,
+        o.total_amount AS totalAmount,
+        o.delivery_fee AS deliveryFee,
+        o.delivery_address AS deliveryAddress,
+        o.delivery_latitude AS deliveryLatitude,
+        o.delivery_longitude AS deliveryLongitude,
+        o.special_instructions AS specialInstructions,
+        o.estimated_delivery_time AS estimatedDeliveryTime,
+        o.actual_delivery_time AS actualDeliveryTime,
+        o.created_at AS createdAt,
+        o.updated_at AS updatedAt,
+        r.name AS restaurantName,
+        u.name AS customerName,
+        u.phone_number AS customerPhoneNumber,
+        rr.id AS restaurantReviewId,
+        rr.rating AS restaurantRating,
+        rr.review_text AS restaurantReviewText,
+        rr.created_at AS restaurantReviewedAt
+      FROM orders o
+      LEFT JOIN restaurants r ON o.restaurant_id = r.id
+      LEFT JOIN users u ON o.customer_id = u.id
+      LEFT JOIN restaurant_reviews rr ON rr.order_id = o.id
       WHERE o.id = ?`, [req.params.id]);
       
     if (orders.length === 0) return res.status(404).json({ success: false, message: 'Order not found' });
     
-    const [items] = await db.query('SELECT * FROM order_items WHERE order_id = ?', [req.params.id]);
+    const [items] = await db.query(baseOrderItemsSelect, [req.params.id]);
     
-    res.json(successResponse({ ...orders[0], items }));
+    res.json(successResponse({ ...orders[0], items, orderItems: items }));
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
@@ -295,19 +353,36 @@ router.put('/:id/status', async (req, res) => {
     
     // Fetch the updated order back
     const [orders] = await db.query(`
-      SELECT o.*, r.name as restaurant_name 
-      FROM orders o 
-      LEFT JOIN restaurants r ON o.restaurant_id = r.id 
+      SELECT
+        o.id,
+        o.order_number AS orderNumber,
+        o.customer_id AS customerId,
+        o.restaurant_id AS restaurantId,
+        o.rider_id AS riderId,
+        o.status,
+        o.total_amount AS totalAmount,
+        o.delivery_fee AS deliveryFee,
+        o.delivery_address AS deliveryAddress,
+        o.delivery_latitude AS deliveryLatitude,
+        o.delivery_longitude AS deliveryLongitude,
+        o.special_instructions AS specialInstructions,
+        o.estimated_delivery_time AS estimatedDeliveryTime,
+        o.actual_delivery_time AS actualDeliveryTime,
+        o.created_at AS createdAt,
+        o.updated_at AS updatedAt,
+        r.name AS restaurantName,
+        rr.id AS restaurantReviewId,
+        rr.rating AS restaurantRating,
+        rr.review_text AS restaurantReviewText,
+        rr.created_at AS restaurantReviewedAt
+      FROM orders o
+      LEFT JOIN restaurants r ON o.restaurant_id = r.id
+      LEFT JOIN restaurant_reviews rr ON rr.order_id = o.id
       WHERE o.id = ?`, [req.params.id]);
       
     if (orders.length === 0) return res.status(404).json({ success: false, message: 'Order not found' });
     
-    const [items] = await db.query(`
-      SELECT oi.*, mi.name as menu_item_name 
-      FROM order_items oi 
-      LEFT JOIN menu_items mi ON oi.menu_item_id = mi.id 
-      WHERE oi.order_id = ?
-    `, [req.params.id]);
+    const [items] = await db.query(baseOrderItemsSelect, [req.params.id]);
     
     // Assign items and normalize casing to match React frontend models 
     orders[0].orderItems = items;

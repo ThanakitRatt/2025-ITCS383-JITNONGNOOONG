@@ -112,7 +112,7 @@ export default function MenuManagement() {
 
     try {
       await restaurantService.deleteMenuItem(restaurantId, itemId);
-      setItems(items.filter(item => item.id !== itemId));
+      setItems((currentItems) => currentItems.filter(item => String(item.id) !== String(itemId)));
       toast.success('Menu item deleted successfully');
     } catch (error) {
       console.error('Delete error:', error);
@@ -129,12 +129,21 @@ export default function MenuManagement() {
     setLoading(true);
     
     try {
+      const parsedCategoryId = Number.parseInt(formData.categoryId, 10);
+      const parsedPrice = Number.parseFloat(formData.price);
+      const parsedPreparationTime = Number.parseInt(formData.preparationTime, 10);
+
+      if (Number.isNaN(parsedCategoryId) || Number.isNaN(parsedPrice) || Number.isNaN(parsedPreparationTime)) {
+        toast.error('Please complete all menu item details');
+        return;
+      }
+
       const itemData = {
         name: formData.name,
         description: formData.description,
-        price: Number.parseFloat(formData.price),
-        categoryId: Number.parseInt(formData.categoryId),
-        preparationTime: Number.parseInt(formData.preparationTime),
+        price: parsedPrice,
+        categoryId: parsedCategoryId,
+        preparationTime: parsedPreparationTime,
         isAvailable: true
       };
 
@@ -145,16 +154,19 @@ export default function MenuManagement() {
           editingItem.id,
           itemData
         );
-        setItems(items.map(item => item.id === editingItem.id ? updated : item));
+        setItems((currentItems) =>
+          currentItems.map((item) => (String(item.id) === String(editingItem.id) ? updated : item))
+        );
         toast.success('Menu item updated successfully');
       } else {
         // Add new item
         const newItem = await restaurantService.addMenuItem(restaurantId, itemData);
-        setItems([...items, newItem]);
+        setItems((currentItems) => [...currentItems, newItem]);
         toast.success('Menu item added successfully');
       }
       
       setIsDialogOpen(false);
+      setEditingItem(null);
     } catch (error: any) {
       console.error('Submit error:', error);
       const errorMsg = error.response?.data?.message || error.message || 'Operation failed';
@@ -202,7 +214,9 @@ export default function MenuManagement() {
         ) : (
           <>
             {categories.map(category => {
-              const categoryItems = items.filter(item => item.categoryId === category.id);
+              const categoryItems = items.filter(
+                item => String(item.categoryId) === String(category.id)
+              );
               
               return (
                 <div key={category.id} className="mb-8">

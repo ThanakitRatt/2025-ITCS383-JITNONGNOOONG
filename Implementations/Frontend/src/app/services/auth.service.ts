@@ -178,8 +178,8 @@ export const verifyOtp = async (otpData: OtpRequest): Promise<LoginResponse> => 
 export const register = async (userData: RegisterRequest): Promise<LoginResponse> => {
   const response = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, userData);
   
-  // Save tokens and user info to localStorage
-  if (response.data.success && response.data.data) {
+  // Only persist auth data when registration also returns tokens
+  if (response.data.success && response.data.data?.token) {
     const { token, refreshToken, user } = response.data.data;
     saveAuthData(token, refreshToken, user);
   }

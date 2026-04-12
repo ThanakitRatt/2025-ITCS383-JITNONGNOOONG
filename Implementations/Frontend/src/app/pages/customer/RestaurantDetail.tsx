@@ -4,8 +4,9 @@ import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { useApp } from '../../contexts/AppContext';
-import restaurantService, { Restaurant, MenuItem } from '../../services/restaurant.service';
+import restaurantService, { Restaurant, MenuItem, RestaurantReview, ReviewSort } from '../../services/restaurant.service';
 import { ArrowLeft, Star, Clock, Plus, Minus, ShoppingCart, Loader2, UtensilsCrossed } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { toast } from 'sonner';
@@ -18,6 +19,8 @@ export default function RestaurantDetail() {
   const [quantity, setQuantity] = useState(1);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [reviews, setReviews] = useState<RestaurantReview[]>([]);
+  const [reviewSort, setReviewSort] = useState<ReviewSort>('recent');
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -27,14 +30,16 @@ export default function RestaurantDetail() {
     Promise.all([
       restaurantService.getRestaurantById(id),
       restaurantService.getRestaurantMenu(id),
+      restaurantService.getRestaurantReviews(id, reviewSort).catch(() => []),
     ])
-      .then(([restaurantData, menuData]) => {
+      .then(([restaurantData, menuData, reviewData]) => {
         setRestaurant(restaurantData);
         setMenu(menuData);
+        setReviews(reviewData);
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, reviewSort]);
 
   if (loading) {
     return (
@@ -114,6 +119,7 @@ export default function RestaurantDetail() {
               <div className="flex items-center gap-1">
                 <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
                 <span>{restaurant.averageRating?.toFixed(1) ?? 'N/A'}</span>
+                <span className="text-white/80">({restaurant.totalReviews ?? 0} reviews)</span>
               </div>
               <div className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
@@ -172,6 +178,63 @@ export default function RestaurantDetail() {
             </div>
           </div>
         ))}
+
+        <div className="mt-12">
+          <div className="mb-6 flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-sm md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-wide text-gray-500">Customer Reviews</p>
+              <div className="mt-2 flex items-center gap-3">
+                <Star className="h-5 w-5 fill-yellow-500 text-yellow-500" />
+                <span className="text-2xl font-semibold">{restaurant.averageRating.toFixed(1)}</span>
+                <span className="text-sm text-gray-500">{restaurant.totalReviews ?? 0} total reviews</span>
+              </div>
+            </div>
+
+            <div className="w-full md:w-56">
+              <Select value={reviewSort} onValueChange={(value) => setReviewSort(value as ReviewSort)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort reviews" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">Most Recent</SelectItem>
+                  <SelectItem value="highest">Highest Rated</SelectItem>
+                  <SelectItem value="lowest">Lowest Rated</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {reviews.length === 0 ? (
+            <Card className="p-6 text-center text-gray-500">No reviews yet for this restaurant.</Card>
+          ) : (
+            <div className="space-y-4">
+              {reviews.map((review) => (
+                <Card key={review.id} className="p-5">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="font-semibold">{review.customerName}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((starValue) => (
+                            <Star
+                              key={starValue}
+                              className={`h-4 w-4 ${starValue <= review.rating ? 'fill-yellow-500 text-yellow-500' : 'text-gray-300'}`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <Badge variant="secondary">{review.rating}/5</Badge>
+                  </div>
+                  {review.reviewText && (
+                    <p className="mt-3 text-sm leading-6 text-gray-700">{review.reviewText}</p>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add to Cart Dialog */}

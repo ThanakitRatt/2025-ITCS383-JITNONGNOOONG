@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { useApp } from '../../contexts/AppContext';
-import { Package, UtensilsCrossed, Tag, ArrowLeft, TrendingUp, Loader2 } from 'lucide-react';
+import { Package, UtensilsCrossed, Tag, ArrowLeft, TrendingUp, Loader2, Star } from 'lucide-react';
 import restaurantService from '../../services/restaurant.service';
 import orderService from '../../services/order.service';
 import type { Restaurant as RestaurantData } from '../../services/restaurant.service';
@@ -104,6 +104,13 @@ export default function RestaurantDashboard() {
       icon: Tag,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50'
+    },
+    {
+      title: 'Average Rating',
+      value: loading ? '...' : `${(restaurant?.averageRating ?? 0).toFixed(1)} / 5`,
+      icon: Star,
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-50'
     }
   ];
 
@@ -129,7 +136,7 @@ export default function RestaurantDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Quick Stats */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           {cards.map((card, idx) => {
             const Icon = card.icon;
             return (
@@ -153,6 +160,28 @@ export default function RestaurantDashboard() {
             );
           })}
         </div>
+
+        {restaurant && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Customer Rating</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-amber-50 p-3">
+                  <Star className="h-6 w-6 fill-amber-500 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-3xl font-semibold">{(restaurant.averageRating ?? 0).toFixed(1)}</p>
+                  <p className="text-sm text-gray-500">{restaurant.totalReviews ?? 0} customer reviews</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500">
+                This score updates automatically whenever a delivered order receives a new review.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Quick Actions */}
         <Card>

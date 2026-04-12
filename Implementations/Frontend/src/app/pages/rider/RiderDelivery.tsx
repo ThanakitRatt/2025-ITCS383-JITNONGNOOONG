@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { useApp } from '../../contexts/AppContext';
-import { ArrowLeft, MapPin, Phone, Navigation, CheckCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, MapPin, Navigation, CheckCircle, Loader2, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { orderService, Order, OrderStatus } from '../../services/order.service';
 
@@ -14,6 +15,7 @@ export default function RiderDelivery() {
   const { user } = useApp();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isContactDialogOpen, setIsContactDialogOpen] = useState(false);
 
   // Fetch order details from API
   useEffect(() => {
@@ -93,6 +95,18 @@ export default function RiderDelivery() {
     return <Badge className="bg-blue-500">{order.status}</Badge>;
   };
 
+  const openGoogleMaps = (query?: string) => {
+    const trimmedQuery = query?.trim();
+    const url = trimmedQuery
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmedQuery)}`
+      : 'https://www.google.com/maps';
+
+    window.open(url, '_blank');
+  };
+
+  const customerName = order.customerName?.trim() || `Customer #${order.customerId}`;
+  const customerPhone = order.customerPhoneNumber?.trim() || 'Phone number not available';
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -133,6 +147,14 @@ export default function RiderDelivery() {
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="font-semibold">Restaurant ID: {order.restaurantId}</p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => openGoogleMaps(`Restaurant ${order.restaurantId}`)}
+              >
+                <Navigation className="w-4 h-4 mr-2" />
+                Open Restaurant in Google Maps
+              </Button>
               {order.orderItems && order.orderItems.length > 0 && (
                 <div className="pt-3 border-t">
                   <p className="text-sm font-semibold mb-2">Order Items:</p>
@@ -170,25 +192,22 @@ export default function RiderDelivery() {
                   <p className="text-sm">{order.deliveryAddress}</p>
                 </div>
               </div>
-              {!!(order.deliveryLatitude && order.deliveryLongitude) && (
-                <div className="flex gap-2 pt-3 border-t">
-                  <Button variant="outline" className="flex-1">
-                    <Phone className="w-4 h-4 mr-2" />
-                    Call Customer
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={() => window.open(
-                      `https://www.google.com/maps/dir/?api=1&destination=${order.deliveryLatitude},${order.deliveryLongitude}`,
-                      '_blank'
-                    )}
-                  >
-                    <Navigation className="w-4 h-4 mr-2" />
-                    Navigate
-                  </Button>
-                </div>
-              )}
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => openGoogleMaps(order.deliveryAddress)}
+              >
+                <Navigation className="w-4 h-4 mr-2" />
+                Open Delivery Location in Google Maps
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setIsContactDialogOpen(true)}
+              >
+                <Phone className="w-4 h-4 mr-2" />
+                Contact Customer
+              </Button>
             </CardContent>
           </Card>
 
@@ -236,6 +255,27 @@ export default function RiderDelivery() {
           )}
         </div>
       </div>
+
+      <Dialog open={isContactDialogOpen} onOpenChange={setIsContactDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Customer Contact Details</DialogTitle>
+            <DialogDescription>
+              Use these details if you need to contact the customer about the delivery.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-500">Customer Name</p>
+              <p className="font-semibold">{customerName}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Phone Number</p>
+              <p className="font-semibold">{customerPhone}</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

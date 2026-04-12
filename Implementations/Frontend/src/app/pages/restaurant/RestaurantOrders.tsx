@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { useApp } from '../../contexts/AppContext';
 import { ArrowLeft, Clock, Loader2, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
@@ -11,13 +10,73 @@ import { toast } from 'sonner';
 import orderService from '../../services/order.service';
 import restaurantService from '../../services/restaurant.service';
 
+type RestaurantOrder = {
+  id: number | string;
+  orderNumber?: string;
+  customerId?: number | string;
+  customerName?: string;
+  status: string;
+  totalAmount?: number;
+  total?: number;
+  deliveryAddress?: string;
+  createdAt?: string;
+  orderItems?: Array<{
+    id?: string | number;
+    menuItemName?: string;
+    name?: string;
+    quantity?: number;
+    totalPrice?: number;
+    unitPrice?: number;
+    price?: number;
+  }>;
+  items?: Array<{
+    id?: string | number;
+    menuItemName?: string;
+    name?: string;
+    quantity?: number;
+    totalPrice?: number;
+    unitPrice?: number;
+    price?: number;
+  }>;
+};
+
+type OrderAction = {
+  value: string;
+  label: string;
+  variant?: 'default' | 'outline' | 'destructive';
+};
+
+const statusFlow: Record<string, OrderAction[]> = {
+  PENDING: [
+    { value: 'CONFIRMED', label: 'Confirm Order' },
+    { value: 'CANCELLED', label: 'Cancel Order', variant: 'destructive' },
+  ],
+  CONFIRMED: [
+    { value: 'PREPARING', label: 'Start Preparing' },
+    { value: 'CANCELLED', label: 'Cancel Order', variant: 'destructive' },
+  ],
+  PREPARING: [
+    { value: 'READY_FOR_PICKUP', label: 'Ready for Pickup' },
+    { value: 'CANCELLED', label: 'Cancel Order', variant: 'destructive' },
+  ],
+  READY_FOR_PICKUP: [
+    { value: 'PICKED_UP', label: 'Mark as Picked Up', variant: 'outline' },
+  ],
+  PICKED_UP: [
+    { value: 'DELIVERED', label: 'Mark as Delivered', variant: 'outline' },
+  ],
+  DELIVERED: [],
+  CANCELLED: [],
+  REFUNDED: [],
+};
+
 export default function RestaurantOrders() {
   const navigate = useNavigate();
   const { user } = useApp();
   const ownerId = user?.id || '1';
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
 
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<RestaurantOrder[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
@@ -57,14 +116,19 @@ export default function RestaurantOrders() {
     }
   };
 
-  const handleStatusChange = async (orderId: string, newStatus: any) => {
-    setUpdatingId(orderId);
+  const handleStatusChange = async (orderId: number | string, newStatus: string) => {
+    const orderIdKey = String(orderId);
+    setUpdatingId(orderIdKey);
     try {
-      await orderService.updateOrderStatus(orderId, { 
+      await orderService.updateOrderStatus(orderId, {
         newStatus: newStatus,
-        updatedBy: Number(restaurantId) 
+        updatedBy: Number(restaurantId)
       });
-      setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+      setOrders((currentOrders) =>
+        currentOrders.map((order) =>
+          String(order.id) === orderIdKey ? { ...order, status: newStatus } : order
+        )
+      );
       toast.success('Order status updated');
     } catch (error) {
       console.error('Failed to update order status:', error);
@@ -85,34 +149,33 @@ export default function RestaurantOrders() {
     REFUNDED: 'bg-gray-500',
   };
 
-  // Get valid next statuses based on current status
-  const getValidNextStatuses = (currentStatus: string): Array<{ value: string; label: string }> => {
-    const statusFlow: Record<string, Array<{ value: string; label: string }>> = {
-      PENDING: [
-        { value: 'CONFIRMED', label: 'Confirm Order' },
-        { value: 'CANCELLED', label: 'Cancel Order' },
-      ],
-      CONFIRMED: [
-        { value: 'PREPARING', label: 'Start Preparing' },
-        { value: 'CANCELLED', label: 'Cancel Order' },
-      ],
-      PREPARING: [
-        { value: 'READY_FOR_PICKUP', label: 'Ready for Pickup' },
-        { value: 'CANCELLED', label: 'Cancel Order' },
-      ],
-      READY_FOR_PICKUP: [
-        { value: 'PICKED_UP', label: 'Mark as Picked Up' },
-      ],
-      PICKED_UP: [
-        { value: 'DELIVERED', label: 'Mark as Delivered' },
-      ],
-      // Final statuses have no next status options
-      DELIVERED: [],
-      CANCELLED: [],
-      REFUNDED: [],
-    };
-
+  const getValidNextStatuses = (currentStatus: string): OrderAction[] => {
     return statusFlow[currentStatus] || [];
+  };
+
+  const getOrderItems = (order: RestaurantOrder) => {
+    return order.orderItems || order.items || [];
+  };
+
+  const getOrderCreatedAt = (order: RestaurantOrder) => {
+    if (!order.createdAt) {
+      return 'Date unavailable';
+    }
+
+    const parsedDate = new Date(order.createdAt);
+    return Number.isNaN(parsedDate.getTime()) ? 'Date unavailable' : format(parsedDate, 'PPp');
+  };
+
+  const getCustomerLabel = (order: RestaurantOrder) => {
+    if (order.customerName) {
+      return order.customerName;
+    }
+
+    if (order.customerId !== undefined && order.customerId !== null) {
+      return `Customer #${order.customerId}`;
+    }
+
+    return 'Customer unavailable';
   };
 
   return (
@@ -154,13 +217,13 @@ export default function RestaurantOrders() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
-                      <CardTitle className="text-lg">Order #{order.id}</CardTitle>
+                      <CardTitle className="text-lg">Order #{order.orderNumber ?? order.id}</CardTitle>
                       <p className="text-sm text-gray-500 mt-1">
-                        Customer: {order.customerName}
+                        Customer: {getCustomerLabel(order)}
                       </p>
                       <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
                         <Clock className="w-4 h-4" />
-                        {format(order.createdAt, 'PPp')}
+                        {getOrderCreatedAt(order)}
                       </div>
                     </div>
                     <Badge className={statusColors[order.status]}>
@@ -173,10 +236,16 @@ export default function RestaurantOrders() {
                   <div>
                     <p className="text-sm font-semibold mb-2">Items:</p>
                     <div className="space-y-1">
-                      {(order.items || []).map((item, idx) => (
+                      {getOrderItems(order).map((item, idx) => (
                         <div key={idx} className="flex justify-between text-sm">
-                          <span>{item.name} × {item.quantity}</span>
-                          <span>฿{(item.price * item.quantity).toFixed(2)}</span>
+                          <span>{item.menuItemName ?? item.name ?? 'Item'} × {item.quantity ?? 0}</span>
+                          <span>
+                            ฿
+                            {(
+                              item.totalPrice ??
+                              (item.unitPrice ?? item.price ?? 0) * (item.quantity ?? 0)
+                            ).toFixed(2)}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -194,26 +263,22 @@ export default function RestaurantOrders() {
                       <p className="text-sm text-gray-500">Total Amount</p>
                       <p className="text-lg font-semibold">฿{(order.totalAmount ?? order.total ?? 0).toFixed(2)}</p>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                       {getValidNextStatuses(order.status).length > 0 ? (
-                        <div className="w-48">
-                          <Select
-                            value={order.status}
-                            onValueChange={(value) => handleStatusChange(order.id, value)}
-                            disabled={updatingId === order.id}
+                        getValidNextStatuses(order.status).map((status) => (
+                          <Button
+                            key={status.value}
+                            variant={status.variant ?? 'default'}
+                            onClick={() => handleStatusChange(order.id, status.value)}
+                            disabled={updatingId === String(order.id)}
                           >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Update status..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getValidNextStatuses(order.status).map((status) => (
-                                <SelectItem key={status.value} value={status.value}>
-                                  {status.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                            {updatingId === String(order.id) ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              status.label
+                            )}
+                          </Button>
+                        ))
                       ) : (
                         <Badge className={`${statusColors[order.status] || 'bg-gray-500'} text-white px-3 py-1`}>
                           {order.status}

@@ -9,6 +9,7 @@ vi.mock('react-router', () => ({
 }));
 
 const mockGetCustomerOrders = vi.fn();
+const mockSubmitRestaurantReview = vi.fn();
 vi.mock('../../services/order.service', () => ({
   default: {
     getCustomerOrders: (...args: any[]) => mockGetCustomerOrders(...args),
@@ -22,6 +23,19 @@ vi.mock('../../services/order.service', () => ({
     DELIVERED: 'DELIVERED',
     CANCELLED: 'CANCELLED',
     REFUNDED: 'REFUNDED',
+  },
+}));
+
+vi.mock('../../services/restaurant.service', () => ({
+  default: {
+    submitRestaurantReview: (...args: any[]) => mockSubmitRestaurantReview(...args),
+  },
+}));
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
@@ -41,6 +55,7 @@ const createMockOrder = (
 ) => ({
   id,
   orderNumber,
+  restaurantId: 1,
   status,
   createdAt: '2024-01-15T10:00:00',
   totalAmount,
@@ -51,6 +66,12 @@ const createMockOrder = (
 describe('OrderTracking', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSubmitRestaurantReview.mockResolvedValue({
+      id: '501',
+      rating: 5,
+      reviewText: 'Excellent service',
+      createdAt: '2024-01-15T12:00:00',
+    });
   });
 
   it('renders loading state initially', () => {
@@ -107,6 +128,7 @@ describe('OrderTracking', () => {
     expect(screen.getByText('฿180.00')).toBeInTheDocument();
     expect(screen.getByText('123 Main St')).toBeInTheDocument();
     expect(screen.getByText('฿250.50')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /view details/i })).toBeInTheDocument();
   });
 
   it('displays correct status badge for delivered orders', async () => {
@@ -149,6 +171,84 @@ describe('OrderTracking', () => {
     expect(screen.getByText('Order #002')).toBeInTheDocument();
     expect(screen.getByText('Dish A × 1')).toBeInTheDocument();
     expect(screen.getByText('Dish B × 2')).toBeInTheDocument();
+  });
+
+  it('opens order details dialog when clicking View Details', async () => {
+    mockGetCustomerOrders.mockResolvedValue({
+      content: [
+        createMockOrder(1, '001', 'PREPARING', [
+          { menuItemName: 'Pad Thai', quantity: 1, totalPrice: 120 },
+        ], 120, '123 Main St'),
+      ],
+    });
+
+    render(<OrderTracking />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #001')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /view details/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Order Details #001')).toBeInTheDocument();
+      expect(screen.getAllByText('123 Main St').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('shows mock live tracking map for picked up orders in details view', async () => {
+    mockGetCustomerOrders.mockResolvedValue({
+      content: [
+        createMockOrder(9, '009', 'PICKED_UP', [
+          { menuItemName: 'Khao Man Gai', quantity: 1, totalPrice: 120 },
+        ], 120, '789 Delivery Rd'),
+      ],
+    });
+
+    render(<OrderTracking />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Order #009')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /view details/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Mock Live Tracking Map')).toBeInTheDocument();
+      expect(screen.getByText(/updates every 5 seconds/i)).toBeInTheDocument();
+      expect(screen.queryByText(/mock tracking requirements covered/i)).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows review form for delivered orders and submits a rating', async () => {
+    mockGetCustomerOrders.mockResolvedValue({
+      content: [
+        createMockOrder(3, '003', 'DELIVERED', [
+          { menuItemName: 'Tom Yum', quantity: 1, totalPrice: 140 },
+        ], 140, '22 Review St'),
+      ],
+    });
+
+    render(<OrderTracking />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Rate this order')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /rate 4 stars/i }));
+    fireEvent.change(screen.getByPlaceholderText(/share anything the restaurant did well/i), {
+      target: { value: 'Very tasty and arrived hot' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /submit review/i }));
+
+    await waitFor(() => {
+      expect(mockSubmitRestaurantReview).toHaveBeenCalledWith('1', {
+        orderId: '3',
+        customerId: '123',
+        rating: 4,
+        reviewText: 'Very tasty and arrived hot',
+      });
+    });
   });
 
   it('navigates back to restaurants when Back button is clicked', async () => {

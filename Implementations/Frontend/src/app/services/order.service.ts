@@ -18,7 +18,10 @@ export interface Order {
   id: number;
   orderNumber: string;
   customerId: number;
+  customerName?: string;
+  customerPhoneNumber?: string;
   restaurantId: number;
+  restaurantName?: string;
   riderId?: number;
   deliveryAddress: string;
   deliveryLatitude?: number;
@@ -27,6 +30,10 @@ export interface Order {
   deliveryFee: number;
   totalAmount: number;
   specialInstructions?: string;
+  restaurantReviewId?: number;
+  restaurantRating?: number;
+  restaurantReviewText?: string;
+  restaurantReviewedAt?: string;
   status: OrderStatus;
   estimatedDeliveryTime?: string;
   createdAt: string;
@@ -93,10 +100,82 @@ export interface UpdateOrderStatusRequest {
   notes?: string;
 }
 
+interface CustomerContactInfo {
+  id: number;
+  name?: string;
+  phoneNumber?: string;
+}
+
 /**
  * Order Service Class
  */
 class OrderService {
+  private normalizeOrderItem(item: any): OrderItem {
+    return {
+      ...item,
+      id: String(item.id),
+      orderId: String(item.orderId ?? item.order_id ?? ''),
+      menuItemId: String(item.menuItemId ?? item.menu_item_id ?? ''),
+      menuItemName: item.menuItemName ?? item.menu_item_name ?? '',
+      quantity: Number(item.quantity ?? 0),
+      unitPrice: Number(item.unitPrice ?? item.unit_price ?? 0),
+      totalPrice: Number(item.totalPrice ?? item.total_price ?? 0),
+      specialRequests: item.specialRequests ?? item.special_instructions,
+    };
+  }
+
+  private normalizeOrder(order: any): Order {
+    const orderItems = order.orderItems ?? order.order_items ?? order.items ?? [];
+
+    return {
+      ...order,
+      id: Number(order.id),
+      orderNumber: order.orderNumber ?? order.order_number ?? '',
+      customerId: Number(order.customerId ?? order.customer_id ?? 0),
+      customerName: order.customerName ?? order.customer_name,
+      customerPhoneNumber: order.customerPhoneNumber ?? order.customer_phone_number,
+      restaurantId: Number(order.restaurantId ?? order.restaurant_id ?? 0),
+      restaurantName: order.restaurantName ?? order.restaurant_name,
+      riderId: order.riderId ?? order.rider_id,
+      deliveryAddress: order.deliveryAddress ?? order.delivery_address ?? '',
+      deliveryLatitude: order.deliveryLatitude ?? order.delivery_latitude,
+      deliveryLongitude: order.deliveryLongitude ?? order.delivery_longitude,
+      orderItems: orderItems.map((item: any) => this.normalizeOrderItem(item)),
+      deliveryFee: Number(order.deliveryFee ?? order.delivery_fee ?? 0),
+      totalAmount: Number(order.totalAmount ?? order.total_amount ?? 0),
+      specialInstructions: order.specialInstructions ?? order.special_instructions,
+      restaurantReviewId: order.restaurantReviewId ?? order.restaurant_review_id ?? undefined,
+      restaurantRating: order.restaurantRating ?? order.restaurant_rating ?? undefined,
+      restaurantReviewText: order.restaurantReviewText ?? order.restaurant_review_text ?? undefined,
+      restaurantReviewedAt: order.restaurantReviewedAt ?? order.restaurant_reviewed_at ?? undefined,
+      createdAt: order.createdAt ?? order.created_at,
+      updatedAt: order.updatedAt ?? order.updated_at,
+    };
+  }
+
+  private async enrichOrderWithCustomerContact(order: Order): Promise<Order> {
+    if (order.customerName && order.customerPhoneNumber) {
+      return order;
+    }
+
+    try {
+      const customerResponse = await apiClient.get<ApiResponse<CustomerContactInfo>>(
+        API_ENDPOINTS.CUSTOMERS.BY_ID(String(order.customerId))
+      );
+
+      const customer = customerResponse.data.data;
+
+      return {
+        ...order,
+        customerName: order.customerName || customer.name,
+        customerPhoneNumber: order.customerPhoneNumber || customer.phoneNumber,
+      };
+    } catch (error) {
+      console.error(`Failed to fetch customer ${order.customerId} contact:`, handleApiError(error));
+      return order;
+    }
+  }
+
   /**
    * Create new order
    */
@@ -107,7 +186,7 @@ class OrderService {
         orderData
       );
       
-      return response.data.data;
+      return this.normalizeOrder(response.data.data);
     } catch (error) {
       console.error('Failed to create order:', handleApiError(error));
       throw error;
@@ -123,7 +202,7 @@ class OrderService {
         API_ENDPOINTS.ORDERS.BY_ID(String(id))
       );
       
-      return response.data.data;
+      return this.enrichOrderWithCustomerContact(this.normalizeOrder(response.data.data));
     } catch (error) {
       console.error(`Failed to fetch order ${id}:`, handleApiError(error));
       throw error;
@@ -163,7 +242,10 @@ class OrderService {
         }
       );
       
-      return response.data.data;
+      return {
+        ...response.data.data,
+        content: (response.data.data.content ?? []).map((order) => this.normalizeOrder(order)),
+      };
     } catch (error) {
       console.error(`Failed to fetch orders for customer ${customerId}:`, handleApiError(error));
       throw error;
@@ -187,7 +269,10 @@ class OrderService {
         }
       );
       
-      return response.data.data;
+      return {
+        ...response.data.data,
+        content: (response.data.data.content ?? []).map((order) => this.normalizeOrder(order)),
+      };
     } catch (error) {
       console.error(`Failed to fetch orders for restaurant ${restaurantId}:`, handleApiError(error));
       throw error;
@@ -207,7 +292,7 @@ class OrderService {
         statusData
       );
       
-      return response.data.data;
+      return this.normalizeOrder(response.data.data);
     } catch (error) {
       console.error(`Failed to update order ${orderId} status:`, handleApiError(error));
       throw error;
