@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { useApp } from '../../contexts/AppContext';
 import restaurantService, { Restaurant, MenuItem, RestaurantReview, ReviewSort } from '../../services/restaurant.service';
@@ -244,6 +244,9 @@ export default function RestaurantDetail() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selectedItem?.name}</DialogTitle>
+            <DialogDescription>
+              Adjust the quantity and add this menu item to your cart.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <ImageWithFallback

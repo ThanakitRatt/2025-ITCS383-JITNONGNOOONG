@@ -1,15 +1,18 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import RestaurantDashboard from './RestaurantDashboard';
 
+const mockNavigate = vi.fn();
+const logoutMock = vi.fn();
+
 vi.mock('react-router', () => ({
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
 }));
 
 vi.mock('../../contexts/AppContext', () => ({
   useApp: () => ({
     user: { id: 'R1', role: 'restaurant', name: 'My Restaurant', email: 'r@test.com' },
-    logout: vi.fn(),
+    logout: logoutMock,
   }),
 }));
 
@@ -42,6 +45,8 @@ const todayOrder = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockNavigate.mockReset();
+  logoutMock.mockReset();
   vi.mocked(restaurantService.getOwnerRestaurants).mockResolvedValue([
     { id: 'R1', name: 'My Restaurant', averageRating: 4.7, totalReviews: 18 } as any,
   ]);
@@ -119,5 +124,42 @@ describe('RestaurantDashboard', () => {
     });
 
     expect(screen.queryByText(/customer rating/i)).not.toBeInTheDocument();
+  });
+
+  it('navigates from stat cards and quick actions', async () => {
+    render(<RestaurantDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/pending orders/i)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/pending orders/i));
+    fireEvent.click(screen.getByText(/menu items/i));
+    fireEvent.click(screen.getByRole('button', { name: /view orders/i }));
+    fireEvent.click(screen.getByRole('button', { name: /manage menu/i }));
+    fireEvent.click(screen.getByRole('button', { name: /create promotion/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/restaurant/orders');
+    expect(mockNavigate).toHaveBeenCalledWith('/restaurant/menu');
+    expect(mockNavigate).toHaveBeenCalledWith('/restaurant/promotions');
+  });
+
+  it('logs out and exits to the login page', () => {
+    render(<RestaurantDashboard />);
+
+    fireEvent.click(screen.getByRole('button', { name: /exit/i }));
+
+    expect(logoutMock).toHaveBeenCalledOnce();
+    expect(mockNavigate).toHaveBeenCalledWith('/login');
+  });
+
+  it('falls back to an empty recent-order list when order loading fails', async () => {
+    vi.mocked(orderService.getRestaurantOrders).mockRejectedValueOnce(new Error('orders down'));
+
+    render(<RestaurantDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no orders yet/i)).toBeInTheDocument();
+    });
   });
 });

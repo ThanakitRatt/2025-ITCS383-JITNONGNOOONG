@@ -3,10 +3,11 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 import RestaurantDetail from './RestaurantDetail';
 
 const addToCartMock = vi.fn();
+const mockNavigate = vi.fn();
 
 vi.mock('react-router', () => ({
   useParams: () => ({ id: '1' }),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => mockNavigate,
 }));
 
 vi.mock('../../contexts/AppContext', () => ({
@@ -73,6 +74,11 @@ const mockMenu = [
 
 beforeEach(() => {
   addToCartMock.mockReset();
+  mockNavigate.mockReset();
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: vi.fn(),
+  });
   vi.mocked(restaurantService.getRestaurantById).mockResolvedValue(mockRestaurant as any);
   vi.mocked(restaurantService.getRestaurantMenu).mockResolvedValue(mockMenu as any);
   vi.mocked(restaurantService.getRestaurantReviews).mockResolvedValue([
@@ -200,6 +206,35 @@ describe('RestaurantDetail', () => {
       quantity: 2,
       restaurantId: '1',
       restaurantName: 'Thai Palace',
+    });
+  });
+
+  it('navigates using the header buttons', async () => {
+    render(<RestaurantDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Thai Palace')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /back/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/customer/restaurants');
+
+    fireEvent.click(screen.getByRole('button', { name: /cart \(0\)/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/customer/checkout');
+  });
+
+  it('re-fetches reviews when the sort order changes', async () => {
+    render(<RestaurantDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Thai Palace')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('combobox'));
+    fireEvent.click(await screen.findByText(/highest rated/i));
+
+    await waitFor(() => {
+      expect(vi.mocked(restaurantService.getRestaurantReviews)).toHaveBeenLastCalledWith('1', 'highest');
     });
   });
 });

@@ -241,6 +241,37 @@ describe('getRestaurantReviews', () => {
       },
     ]);
   });
+
+  it('falls back to a generic customer name when the review payload is incomplete', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce(
+      fakeResponse([
+        {
+          id: 2,
+          restaurant_id: 4,
+          order_id: 12,
+          customer_id: 9,
+          rating: 3,
+          created_at: '2025-01-03T12:00:00Z',
+        },
+      ] as any),
+    );
+
+    const result = await restaurantService.getRestaurantReviews('4');
+
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        customerId: '9',
+        customerName: 'Customer',
+        rating: 3,
+      }),
+    );
+  });
+
+  it('rethrows when loading reviews fails', async () => {
+    vi.mocked(apiClient.get).mockRejectedValueOnce(new Error('review error'));
+
+    await expect(restaurantService.getRestaurantReviews('3')).rejects.toThrow();
+  });
 });
 
 describe('submitRestaurantReview', () => {
@@ -281,6 +312,18 @@ describe('submitRestaurantReview', () => {
       created_at: '2025-01-02T12:00:00Z',
       createdAt: '2025-01-02T12:00:00Z',
     });
+  });
+
+  it('rethrows when review submission fails', async () => {
+    vi.mocked(apiClient.post).mockRejectedValueOnce(new Error('submit error'));
+
+    await expect(
+      restaurantService.submitRestaurantReview('3', {
+        orderId: '11',
+        customerId: '8',
+        rating: 4,
+      }),
+    ).rejects.toThrow();
   });
 });
 

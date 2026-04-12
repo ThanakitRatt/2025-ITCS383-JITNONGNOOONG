@@ -156,6 +156,26 @@ describe('getOrderById', () => {
 
     expect(result).toEqual(mockOrder);
   });
+
+  it('skips customer enrichment when the order already includes contact details', async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce(
+      fakeResponse({
+        ...mockOrder,
+        customerName: 'Ready Customer',
+        customerPhoneNumber: '+66810000000',
+      } as any),
+    );
+
+    const result = await orderService.getOrderById(1);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        customerName: 'Ready Customer',
+        customerPhoneNumber: '+66810000000',
+      }),
+    );
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+  });
 });
 
 // ========== getOrderByNumber ==========
@@ -339,6 +359,11 @@ describe('getStatusText', () => {
   it('returns human-readable text for READY_FOR_PICKUP', () => {
     expect(orderService.getStatusText(OrderStatus.READY_FOR_PICKUP)).toBe('Ready for Pickup');
   });
+
+  it('returns human-readable text for PICKED_UP and REFUNDED', () => {
+    expect(orderService.getStatusText(OrderStatus.PICKED_UP)).toBe('Picked Up');
+    expect(orderService.getStatusText(OrderStatus.REFUNDED)).toBe('Refunded');
+  });
 });
 
 // ========== getStatusColor ==========
@@ -357,5 +382,12 @@ describe('getStatusColor', () => {
 
   it('returns blue for CONFIRMED', () => {
     expect(orderService.getStatusColor(OrderStatus.CONFIRMED)).toBe('text-blue-600');
+  });
+
+  it('returns mapped colors for PREPARING, READY_FOR_PICKUP, PICKED_UP, and REFUNDED', () => {
+    expect(orderService.getStatusColor(OrderStatus.PREPARING)).toBe('text-orange-600');
+    expect(orderService.getStatusColor(OrderStatus.READY_FOR_PICKUP)).toBe('text-purple-600');
+    expect(orderService.getStatusColor(OrderStatus.PICKED_UP)).toBe('text-indigo-600');
+    expect(orderService.getStatusColor(OrderStatus.REFUNDED)).toBe('text-gray-600');
   });
 });
