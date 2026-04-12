@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ArrowLeft, Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import restaurantService from '../../services/restaurant.service';
@@ -321,6 +321,9 @@ export default function MenuManagement() {
             <DialogTitle>
               {editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}
             </DialogTitle>
+            <DialogDescription>
+              {editingItem ? 'Update the selected menu item details.' : 'Add a new menu item to this restaurant.'}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

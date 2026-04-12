@@ -4,6 +4,17 @@ const db = require('../config/db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+const serverErrorResponse = (res, error) =>
+  res.status(500).json({ success: false, message: 'Server error', error: error.message });
+
+const buildAuthUser = (user) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  phoneNumber: user.phone_number,
+});
+
 // Register
 router.post('/register', async (req, res) => {
   try {
@@ -42,18 +53,12 @@ router.post('/register', async (req, res) => {
       message: 'User registered successfully',
       data: {
         message: 'User registered successfully',
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          phoneNumber: user.phone_number
-        }
+        user: buildAuthUser(user)
       }
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    serverErrorResponse(res, error);
   }
 });
 
@@ -79,18 +84,12 @@ router.post('/login', async (req, res) => {
       message: 'OTP sent to your email',
       data: {
         message: 'OTP sent to your email',
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          phoneNumber: user.phone_number
-        }
+        user: buildAuthUser(user)
       }
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    serverErrorResponse(res, error);
   }
 });
 
@@ -118,18 +117,12 @@ router.post('/otp', async (req, res) => {
         token,
         refreshToken: token,
         message: 'Login successful',
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          phoneNumber: user.phone_number
-        }
+        user: buildAuthUser(user)
       }
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    serverErrorResponse(res, error);
   }
 });
 

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import MenuManagement from './MenuManagement';
 import { toast } from 'sonner';
@@ -33,6 +33,12 @@ vi.mock('../../services/restaurant.service', () => ({
 }));
 
 import restaurantService from '../../services/restaurant.service';
+
+const flushMenuLoad = async () => {
+  await act(async () => {
+    await Promise.resolve();
+  });
+};
 
 const mockMenuItems = [
   {
@@ -74,6 +80,7 @@ beforeEach(() => {
 describe('MenuManagement', () => {
   it('renders menu management header', async () => {
     render(<MenuManagement />);
+    await flushMenuLoad();
     expect(screen.getByText('Menu Management')).toBeInTheDocument();
   });
 
@@ -86,9 +93,20 @@ describe('MenuManagement', () => {
     });
   });
 
-  it('shows loading state while fetching data', () => {
+  it('shows loading state while fetching data', async () => {
     render(<MenuManagement />);
+    await flushMenuLoad();
     expect(screen.getByText(/menu management/i)).toBeInTheDocument();
+  });
+
+  it('shows an error when the restaurant cannot be loaded', async () => {
+    vi.mocked(restaurantService.getOwnerRestaurants).mockRejectedValueOnce(new Error('Owner load failed'));
+
+    render(<MenuManagement />);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Failed to load restaurant');
+    });
   });
 
   it('handles API error when loading menu', async () => {
@@ -230,6 +248,158 @@ describe('MenuManagement', () => {
     });
   });
 
+  it('updates an existing menu item when submitting the edit form', async () => {
+    const updatedItem = { ...mockMenuItems[0], name: 'Updated Pad Thai', price: 130 };
+    vi.mocked(restaurantService.updateMenuItem).mockResolvedValueOnce(updatedItem);
+
+    render(<MenuManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Pad Thai')).toBeInTheDocument();
+    });
+
+    const buttons = screen.getAllByRole('button');
+    const editButton = buttons.find(btn => btn.querySelector('.lucide-pencil'));
+    if (editButton) fireEvent.click(editButton);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Pad Thai')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/item name/i), {
+      target: { value: 'Updated Pad Thai' },
+    });
+    fireEvent.change(screen.getByLabelText(/price/i), {
+      target: { value: '130' },
+    });
+
+    const form = screen.getByLabelText(/item name/i).closest('form');
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    await waitFor(() => {
+      expect(restaurantService.updateMenuItem).toHaveBeenCalledWith('2', '1', expect.objectContaining({
+        name: 'Updated Pad Thai',
+        price: 130,
+      }));
+      expect(toast.success).toHaveBeenCalledWith('Menu item updated successfully');
+    });
+  });
+
+  it('shows a validation error when numeric fields are invalid', async () => {
+    render(<MenuManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Pad Thai')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Add Item'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/item name/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/item name/i), {
+      target: { value: 'Broken Item' },
+    });
+    fireEvent.change(screen.getByLabelText(/category/i), {
+      target: { value: 'not-a-number' },
+    });
+    fireEvent.change(screen.getByLabelText(/price/i), {
+      target: { value: 'abc' },
+    });
+    fireEvent.change(screen.getByLabelText(/description/i), {
+      target: { value: 'Broken item description' },
+    });
+    fireEvent.change(screen.getByLabelText(/prep time/i), {
+      target: { value: 'not-a-number' },
+    });
+
+    const form = screen.getByLabelText(/item name/i).closest('form');
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Please complete all menu item details');
+    });
+
+    expect(restaurantService.addMenuItem).not.toHaveBeenCalled();
+  });
+
+  it('shows the service error message when adding an item fails', async () => {
+    vi.mocked(restaurantService.addMenuItem).mockRejectedValueOnce({
+      response: { data: { message: 'Category mismatch' } },
+    });
+
+    render(<MenuManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Pad Thai')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Add Item'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/item name/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/item name/i), {
+      target: { value: 'Broken Item' },
+    });
+    fireEvent.change(screen.getByLabelText(/price/i), {
+      target: { value: '100' },
+    });
+
+    const form = screen.getByLabelText(/item name/i).closest('form');
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Category mismatch');
+    });
+  });
+
+  it('falls back to a generic operation error when submission fails without a message', async () => {
+    vi.mocked(restaurantService.addMenuItem).mockRejectedValueOnce({ unexpected: true });
+
+    render(<MenuManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Pad Thai')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Add Item'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/item name/i)).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText(/item name/i), {
+      target: { value: 'Fallback Item' },
+    });
+    fireEvent.change(screen.getByLabelText(/description/i), {
+      target: { value: 'Fallback description' },
+    });
+    fireEvent.change(screen.getByLabelText(/price/i), {
+      target: { value: '100' },
+    });
+    fireEvent.change(screen.getByLabelText(/prep time/i), {
+      target: { value: '20' },
+    });
+
+    const form = screen.getByLabelText(/item name/i).closest('form');
+    if (form) {
+      fireEvent.submit(form);
+    }
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith('Operation failed');
+    });
+  });
+
   it('shows empty state when no menu items', async () => {
     vi.mocked(restaurantService.getRestaurantMenu).mockResolvedValueOnce([]);
 
@@ -248,6 +418,26 @@ describe('MenuManagement', () => {
     await waitFor(() => {
       expect(screen.getByText(/no categories yet\. create categories first\./i)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /manage categories/i })).toBeInTheDocument();
+    });
+  });
+
+  it('closes the dialog when cancel is clicked', async () => {
+    render(<MenuManagement />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Pad Thai')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Add Item'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
   });
 

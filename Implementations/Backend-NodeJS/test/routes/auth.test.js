@@ -156,6 +156,33 @@ test('POST /login accepts demo passwords even when bcrypt compare fails', async 
   cleanup();
 });
 
+test('POST /login returns 400 when both bcrypt and demo password checks fail', async () => {
+  const { router, cleanup } = loadAuthRoute({
+    querySequence: [
+      [[{
+        id: 5,
+        name: 'Real User',
+        email: 'real@example.com',
+        role: 'CUSTOMER',
+        phone_number: '0899999999',
+        password: 'stored-hash',
+      }]],
+    ],
+    bcryptMocks: {
+      compare: async () => false,
+    },
+  });
+  const handler = getRouteHandler(router, 'post', '/login');
+  const res = createMockResponse();
+
+  await handler({ body: { email: 'real@example.com', password: 'wrong-password' } }, res);
+
+  assert.equal(res.statusCode, 400);
+  assert.equal(res.body.message, 'Invalid credentials');
+
+  cleanup();
+});
+
 test('POST /otp returns 400 when the user cannot be found', async () => {
   const { router, cleanup } = loadAuthRoute({
     querySequence: [
@@ -193,6 +220,23 @@ test('POST /otp returns a signed token for an existing user', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.data.token, 'signed-token');
   assert.equal(res.body.data.refreshToken, 'signed-token');
+
+  cleanup();
+});
+
+test('POST /otp returns 500 when the database query fails', async () => {
+  const { router, cleanup } = loadAuthRoute({
+    querySequence: [
+      new Error('db down'),
+    ],
+  });
+  const handler = getRouteHandler(router, 'post', '/otp');
+  const res = createMockResponse();
+
+  await handler({ body: { email: 'otp@example.com', otp: '000000' } }, res);
+
+  assert.equal(res.statusCode, 500);
+  assert.equal(res.body.message, 'Server error');
 
   cleanup();
 });
