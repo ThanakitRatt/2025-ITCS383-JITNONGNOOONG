@@ -1,55 +1,103 @@
-name: CI Workflow
+name: CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: ["main", "master"]
 
 jobs:
-  build-backend:
-    name: Build Backend (Java)
+  backend-node:
+    name: Backend Node.js
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: Implementations/Backend
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: maven
-        
-    - name: Build with Maven
-      run: mvn clean verify
+        working-directory: Implementations/Backend-NodeJS
 
-  build-frontend:
-    name: Build Frontend (Node.js)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: Implementations/Backend-NodeJS/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+  frontend:
+    name: Frontend Build and Test
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: Implementations/Frontend
-        
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Use Node.js 20.x
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
-        cache: 'npm'
-        cache-dependency-path: Implementations/Frontend/package-lock.json
-        
-    - name: Install dependencies
-      run: npm install
-      
-    - name: Build
-      run: npm run build
-      
-    - name: Run Tests
-      # Add test script if applicable in your package.json
-      run: npm test --if-present
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: Implementations/Frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Run frontend tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload frontend coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: Implementations/Frontend/coverage
+
+  sonarqube:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    needs: [backend-node, frontend]
+    if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            Implementations/Backend-NodeJS/package-lock.json
+            Implementations/Frontend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: Implementations/Backend-NodeJS
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: Implementations/Frontend
+        run: npm ci
+
+      - name: Generate frontend coverage for SonarQube
+        working-directory: Implementations/Frontend
+        run: npm run test:coverage
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
