@@ -109,9 +109,9 @@ describe('RestaurantOrders', () => {
     render(<RestaurantOrders />);
     
     await waitFor(() => {
-      expect(screen.getByText('Order #1')).toBeInTheDocument();
-      expect(screen.getByText('Order #2')).toBeInTheDocument();
-      expect(screen.getByText('Order #3')).toBeInTheDocument();
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
+      expect(screen.getByText('Order #ORD-002')).toBeInTheDocument();
+      expect(screen.getByText('Order #ORD-003')).toBeInTheDocument();
     });
   });
 
@@ -147,7 +147,7 @@ describe('RestaurantOrders', () => {
     render(<RestaurantOrders />);
     
     await waitFor(() => {
-      expect(screen.getByText('Order #3')).toBeInTheDocument();
+      expect(screen.getByText('Order #ORD-003')).toBeInTheDocument();
     });
     // Should not crash when items array is empty
   });
@@ -220,34 +220,58 @@ describe('RestaurantOrders', () => {
     });
   });
 
-  it('renders order status dropdowns', async () => {
+  it('renders action buttons for orders that can advance', async () => {
     render(<RestaurantOrders />);
     
     await waitFor(() => {
-      expect(screen.getByText('Order #1')).toBeInTheDocument();
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
     });
 
-    // Verify status dropdowns are rendered
-    const statusSelects = screen.getAllByRole('combobox');
-    expect(statusSelects.length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /confirm order/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /cancel order/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /start preparing/i })).toBeInTheDocument();
   });
 
-  it('calls update service when status changes', async () => {
+  it('calls update service when confirming an order', async () => {
     render(<RestaurantOrders />);
     
     await waitFor(() => {
-      expect(screen.getByText('Order #1')).toBeInTheDocument();
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
     });
 
-    // Verify the component has loaded orders
-    expect(orderService.getRestaurantOrders).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /confirm order/i }));
+
+    await waitFor(() => {
+      expect(orderService.updateOrderStatus).toHaveBeenCalledWith('1', {
+        newStatus: 'CONFIRMED',
+        updatedBy: 2,
+      });
+      expect(toast.success).toHaveBeenCalledWith('Order status updated');
+    });
+  });
+
+  it('calls update service when cancelling an order', async () => {
+    render(<RestaurantOrders />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: /cancel order/i })[0]);
+
+    await waitFor(() => {
+      expect(orderService.updateOrderStatus).toHaveBeenCalledWith('1', {
+        newStatus: 'CANCELLED',
+        updatedBy: 2,
+      });
+    });
   });
 
   it('refreshes orders when clicking refresh button', async () => {
     render(<RestaurantOrders />);
     
     await waitFor(() => {
-      expect(screen.getByText('Order #1')).toBeInTheDocument();
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
     });
 
     expect(orderService.getRestaurantOrders).toHaveBeenCalledTimes(1);
@@ -264,7 +288,7 @@ describe('RestaurantOrders', () => {
     render(<RestaurantOrders />);
     
     await waitFor(() => {
-      expect(screen.getByText('Order #1')).toBeInTheDocument();
+      expect(screen.getByText('Order #ORD-001')).toBeInTheDocument();
     });
 
     const backButton = screen.getByRole('button', { name: /dashboard/i });
