@@ -6,7 +6,7 @@ import { useApp } from '../../contexts/AppContext';
 import { Package, UtensilsCrossed, Tag, ArrowLeft, TrendingUp, Loader2, Star } from 'lucide-react';
 import restaurantService from '../../services/restaurant.service';
 import orderService from '../../services/order.service';
-import type { Restaurant as RestaurantData } from '../../services/restaurant.service';
+import type { Restaurant as RestaurantData, RestaurantReview } from '../../services/restaurant.service';
 import type { Order } from '../../services/order.service';
 
 export default function RestaurantDashboard() {
@@ -16,6 +16,7 @@ export default function RestaurantDashboard() {
 
   const [restaurant, setRestaurant] = useState<RestaurantData | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [recentReviews, setRecentReviews] = useState<RestaurantReview[]>([]);
   const [menuCount, setMenuCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -36,9 +37,10 @@ export default function RestaurantDashboard() {
         
         // Now fetch menu and orders using the actual restaurant ID
         const restaurantId = restaurantData.id.toString();
-        const [menuResult, ordersPage] = await Promise.all([
+        const [menuResult, ordersPage, reviewResult] = await Promise.all([
           restaurantService.getRestaurantMenu(restaurantId).catch(() => null),
           orderService.getRestaurantOrders(restaurantId, 0, 20).catch(() => null),
+          restaurantService.getRestaurantReviews(restaurantId, 'recent').catch(() => []),
         ]);
 
         if (menuResult) {
@@ -51,6 +53,7 @@ export default function RestaurantDashboard() {
 
         const orders: Order[] = ordersPage?.content ?? [];
         setRecentOrders(orders);
+        setRecentReviews(reviewResult.slice(0, 3));
       } catch {
         // fail silently — individual errors already caught above
       } finally {
@@ -105,13 +108,6 @@ export default function RestaurantDashboard() {
       color: 'text-orange-600',
       bgColor: 'bg-orange-50'
     },
-    {
-      title: 'Average Rating',
-      value: loading ? '...' : `${(restaurant?.averageRating ?? 0).toFixed(1)} / 5`,
-      icon: Star,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50'
-    }
   ];
 
   return (
@@ -161,28 +157,6 @@ export default function RestaurantDashboard() {
           })}
         </div>
 
-        {restaurant && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Customer Rating</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-amber-50 p-3">
-                  <Star className="h-6 w-6 fill-amber-500 text-amber-500" />
-                </div>
-                <div>
-                  <p className="text-3xl font-semibold">{(restaurant.averageRating ?? 0).toFixed(1)}</p>
-                  <p className="text-sm text-gray-500">{restaurant.totalReviews ?? 0} customer reviews</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-500">
-                This score updates automatically whenever a delivered order receives a new review.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Quick Actions */}
         <Card>
           <CardHeader>
@@ -216,6 +190,59 @@ export default function RestaurantDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {restaurant && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Customer Rating</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-amber-50 p-3">
+                    <Star className="h-6 w-6 fill-amber-500 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-3xl font-semibold">{(restaurant.averageRating ?? 0).toFixed(1)}</p>
+                    <p className="text-sm text-gray-500">{restaurant.totalReviews ?? 0} customer reviews</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-900">Recent customer comments</p>
+                </div>
+
+                {recentReviews.length === 0 ? (
+                  <p className="text-sm text-gray-500">No customer comments yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {recentReviews.map((review) => (
+                      <div key={review.id} className="rounded-xl border bg-gray-50 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-gray-900">{review.customerName}</p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(review.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 text-amber-500">
+                            <Star className="h-4 w-4 fill-amber-500" />
+                            <span className="text-sm font-semibold text-gray-900">{review.rating.toFixed(1)}</span>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-sm text-gray-600">
+                          {review.reviewText?.trim() || 'Customer left a rating without a written comment.'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent Orders */}
         <Card className="mt-6">

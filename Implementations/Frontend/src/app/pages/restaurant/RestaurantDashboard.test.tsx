@@ -20,6 +20,7 @@ vi.mock('../../services/restaurant.service', () => ({
   default: {
     getRestaurantMenu: vi.fn(),
     getOwnerRestaurants: vi.fn(),
+    getRestaurantReviews: vi.fn(),
   },
 }));
 
@@ -51,6 +52,28 @@ beforeEach(() => {
     { id: 'R1', name: 'My Restaurant', averageRating: 4.7, totalReviews: 18 } as any,
   ]);
   vi.mocked(restaurantService.getRestaurantMenu).mockResolvedValue([]);
+  vi.mocked(restaurantService.getRestaurantReviews).mockResolvedValue([
+    {
+      id: 'REV-1',
+      restaurantId: 'R1',
+      orderId: 'ORD-1',
+      customerId: 'C1',
+      customerName: 'Alice',
+      rating: 5,
+      reviewText: 'Amazing noodles and very fast delivery.',
+      createdAt: '2026-04-12T10:00:00Z',
+    },
+    {
+      id: 'REV-2',
+      restaurantId: 'R1',
+      orderId: 'ORD-2',
+      customerId: 'C2',
+      customerName: 'Bob',
+      rating: 4,
+      reviewText: '',
+      createdAt: '2026-04-11T10:00:00Z',
+    },
+  ] as any);
   vi.mocked(orderService.getRestaurantOrders).mockResolvedValue({ content: [todayOrder] } as any);
 });
 
@@ -82,11 +105,14 @@ describe('RestaurantDashboard', () => {
     });
   });
 
-  it('shows the average rating card and summary', async () => {
+  it('shows the average rating card and recent customer comments below quick actions', async () => {
     render(<RestaurantDashboard />);
     await waitFor(() => {
       expect(screen.getAllByText(/4\.7/).length).toBeGreaterThan(0);
       expect(screen.getByText(/18 customer reviews/i)).toBeInTheDocument();
+      expect(screen.getByText(/recent customer comments/i)).toBeInTheDocument();
+      expect(screen.getByText(/amazing noodles and very fast delivery/i)).toBeInTheDocument();
+      expect(screen.getByText(/customer left a rating without a written comment/i)).toBeInTheDocument();
     });
   });
 
@@ -124,6 +150,16 @@ describe('RestaurantDashboard', () => {
     });
 
     expect(screen.queryByText(/customer rating/i)).not.toBeInTheDocument();
+  });
+
+  it('shows an empty comment state when no recent reviews exist', async () => {
+    vi.mocked(restaurantService.getRestaurantReviews).mockResolvedValueOnce([]);
+
+    render(<RestaurantDashboard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no customer comments yet/i)).toBeInTheDocument();
+    });
   });
 
   it('navigates from stat cards and quick actions', async () => {
