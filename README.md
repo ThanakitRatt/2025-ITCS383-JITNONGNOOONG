@@ -5,6 +5,9 @@
 
 The goal of this project is to build a food delivery platform that connects customers, restaurants, riders, and administrators in one system. The current implementation is designed as a web-based platform with a React frontend, a Node.js Express backend, and a shared cloud-hosted MySQL database.
 
+## Food Delivery Mobile App
+Link: https://github.com/minxc9/JITNONGNOOONG_Mobile-App.git
+
 ### 1. User Roles
 
 **Customer**
