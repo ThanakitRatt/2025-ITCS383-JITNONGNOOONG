@@ -158,7 +158,6 @@ C8 -.-> T8
 ## **Traceability Graph (Affected by changes)**
 **R1: Submit Rating & Review**
 ```mermaid
-CR: R1
 graph LR
 
 %% =====================
