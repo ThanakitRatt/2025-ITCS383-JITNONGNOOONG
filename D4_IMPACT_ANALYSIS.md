@@ -2921,12 +2921,13 @@ C8 -.-> T8
 ```
 
 ## **Directed Graph of SLOs**
-SLO1: Authentication Module
-SLO2: Customers Module
-SLO3: Orders Module
-SLO4: Payments Module
-SLO5: Restaurants Module
-SLO6: Riders Module
+- SLO1: Authentication Module
+- SLO2: Customers Module
+- SLO3: Orders Module
+- SLO4: Payments Module
+- SLO5: Restaurants Module
+- SLO6: Riders Module
+
 ```mermaid
 flowchart LR
 
