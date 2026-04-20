@@ -45,13 +45,12 @@ const baseOrderSelect = `
     o.created_at AS createdAt,
     o.updated_at AS updatedAt,
     r.name AS restaurantName,
-    rr.id AS restaurantReviewId,
-    rr.rating AS restaurantRating,
-    rr.review_text AS restaurantReviewText,
-    rr.created_at AS restaurantReviewedAt
+    NULL AS restaurantReviewId,
+    NULL AS restaurantRating,
+    NULL AS restaurantReviewText,
+    NULL AS restaurantReviewedAt
   FROM orders o
   LEFT JOIN restaurants r ON o.restaurant_id = r.id
-  LEFT JOIN restaurant_reviews rr ON rr.order_id = o.id
 `;
 
 const baseOrderItemsSelect = `
@@ -107,13 +106,12 @@ const singleOrderSelect = `
     o.created_at AS createdAt,
     o.updated_at AS updatedAt,
     r.name AS restaurantName,
-    rr.id AS restaurantReviewId,
-    rr.rating AS restaurantRating,
-    rr.review_text AS restaurantReviewText,
-    rr.created_at AS restaurantReviewedAt
+    NULL AS restaurantReviewId,
+    NULL AS restaurantRating,
+    NULL AS restaurantReviewText,
+    NULL AS restaurantReviewedAt
   FROM orders o
   LEFT JOIN restaurants r ON o.restaurant_id = r.id
-  LEFT JOIN restaurant_reviews rr ON rr.order_id = o.id
 `;
 
 const singleOrderWithCustomerSelect = `

@@ -6,7 +6,8 @@
  */
 
 // API Base URL - defaults to localhost for development
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'https://two025-itcs383-jitnongnooong-2.onrender.com';
 
 // API Version
 export const API_VERSION = 'v1';
