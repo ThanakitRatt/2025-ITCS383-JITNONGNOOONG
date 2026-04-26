@@ -194,9 +194,8 @@ Final technical decisions and verification remained the responsibility of the pr
 **AI Tool:** Codex (GPT-5 based coding assistant)  
 **Area:** Frontend Feature Enhancement / Rider Flow
 
-**Prompt Used (summary):**
-- Add customer contact support for the rider flow.
-- Show usable customer delivery information instead of only raw IDs when possible.
+**Prompt Used:**
+> "In the rider delivery page, please add a contact customer function and show the customer details more clearly, because the rider needs that information while delivering and the current page is still not helpful enough."
 
 **What Was Accepted:**
 - Adding a `Contact Customer` action in the rider delivery screen.
@@ -221,9 +220,8 @@ Final technical decisions and verification remained the responsibility of the pr
 **AI Tool:** Codex (GPT-5 based coding assistant)  
 **Area:** Frontend Authentication / API Integration
 
-**Prompt Used (summary):**
-- Make customer registration actually work with the current API.
-- Preserve the registration form fields while sending the backend only the data it accepts.
+**Prompt Used:**
+> "The customer registration page already exists, but it still does not actually work with the current system, so please make the register customer flow work properly with the backend and handle the main validation and error cases too."
 
 **What Was Accepted:**
 - Wiring the registration form to the real `authService.register(...)` API call.
@@ -248,9 +246,8 @@ Final technical decisions and verification remained the responsibility of the pr
 **AI Tool:** Codex (GPT-5 based coding assistant)  
 **Area:** Test Coverage / Preventive Maintenance
 
-**Prompt Used (summary):**
-- Add coverage-oriented tests for changed modules.
-- Raise confidence in the new frontend and backend work before submission.
+**Prompt Used:**
+> "Please add more coverage tests for the new features and the important changed modules, because I want better quality evidence and I do not want to submit the project with weak test support."
 
 **What Was Accepted:**
 - Writing focused tests around the newly changed feature areas rather than only smoke-testing pages manually.
@@ -275,9 +272,8 @@ Final technical decisions and verification remained the responsibility of the pr
 **AI Tool:** Codex (GPT-5 based coding assistant)  
 **Area:** Adaptive Maintenance / Mobile Application
 
-**Prompt Used (summary):**
-- Support the project’s application-version work in addition to the web system.
-- Document and align the mobile-app direction with the rest of the project artifacts.
+**Prompt Used:**
+> "I also need an application version of this web system, so please support the mobile-app direction too and keep the work aligned with making an app version using Flutter."
 
 **What Was Accepted:**
 - Keeping the mobile application as a distinct project track rather than forcing it into the web frontend codebase.
@@ -289,7 +285,6 @@ Final technical decisions and verification remained the responsibility of the pr
 - Mixing web-only implementation details with mobile-app claims that belong to the separate app work.
 
 **Verification:**
-- Checked `D3_CHANGE_REQUESTS.md` for the mobile-app change request.
 - Confirmed the repository README points to the separate mobile app project.
 - Matched the wording to the handover/design documents that mention a mobile application path.
 
@@ -301,9 +296,8 @@ Final technical decisions and verification remained the responsibility of the pr
 **AI Tool:** Codex (GPT-5 based coding assistant)  
 **Area:** Testing
 
-**Prompt Used (summary):**
-- Update and extend tests after each feature or bug fix.
-- Keep mocks aligned with changed service methods and dialog-based UI flows.
+**Prompt Used:**
+> "After these feature changes and bug fixes, please update the tests too, extend the missing cases, and keep the mocks aligned with the new service methods and UI flow so the test suite still reflects the real behavior."
 
 **What Was Accepted:**
 - New and updated test cases for customer order tracking and restaurant detail/dashboard.
@@ -322,11 +316,11 @@ Final technical decisions and verification remained the responsibility of the pr
 
 ## Overall AI Usage Principles
 
-1. **AI was used as a support tool, not as the final authority.**
-2. **All important outputs were reviewed before adoption.**
-3. **Incorrect assumptions were revised when local code or runtime behavior showed otherwise.**
-4. **Verification was required before accepting AI-assisted changes.**
-5. **Prompts and accepted outputs were documented for traceability.**
+1. AI was used as a support tool, not as the final authority.
+2. All important outputs were reviewed before adoption.
+3. Incorrect assumptions were revised when local code or runtime behavior showed otherwise.
+4. Verification was required before accepting AI-assisted changes.
+5. Prompts and accepted outputs were documented for traceability.
 
 ---
 
