@@ -36,8 +36,6 @@ The current runnable implementation in this repository is:
 - Backend: Node.js + Express
 - Database: cloud-hosted MySQL
 
-There is also an older Spring Boot backend under `Implementations/Backend`, but the main local setup in this README follows `Implementations/Backend-NodeJS` because it matches the frontend's current API configuration.
-
 ## Project Structure
 
 ```text
@@ -51,8 +49,7 @@ There is also an older Spring Boot backend under `Implementations/Backend`, but 
 ├── Designs/
 └── Implementations/
     ├── Frontend/          # React + Vite application
-    ├── Backend-NodeJS/    # Active Express + MySQL backend
-    └── Backend/           # Older Spring Boot implementation
+    └── Backend-NodeJS/    # Active Express + MySQL backend
 ```
 
 ## Local URLs
@@ -62,6 +59,16 @@ There is also an older Spring Boot backend under `Implementations/Backend`, but 
 | Frontend | http://localhost:5173 |
 | Node.js API | http://localhost:8080 |
 | API root | http://localhost:8080/api/v1 |
+
+## Current Cloud Backend
+
+The current deployed backend used by the web frontend is:
+
+```text
+https://two025-itcs383-jitnongnooong-2.onrender.com
+```
+
+The frontend configuration in `Implementations/Frontend` currently defaults to that Render backend unless you override `VITE_API_BASE_URL`.
 
 ## Prerequisites
 
@@ -125,7 +132,18 @@ The frontend will start at `http://localhost:5173`.
 
 ## Frontend API Configuration
 
-The frontend already points to `http://localhost:8080` by default for local development, so no extra change is required in the normal setup.
+The frontend reads `VITE_API_BASE_URL`.
+
+- Current default deployed backend: `https://two025-itcs383-jitnongnooong-2.onrender.com`
+- Common local override: `http://localhost:8080`
+
+If you want the frontend to talk to your local backend instead of Render, create `Implementations/Frontend/.env.local` with:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+Then restart the Vite dev server.
 
 ## Authentication Flow
 
@@ -156,6 +174,14 @@ Example OTP: `123456`
 curl http://localhost:8080/
 curl http://localhost:8080/api/v1/restaurants
 curl http://localhost:8080/api/v1/orders/admin/stats
+```
+
+Useful deployed checks:
+
+```bash
+curl https://two025-itcs383-jitnongnooong-2.onrender.com/
+curl https://two025-itcs383-jitnongnooong-2.onrender.com/api/v1/restaurants/search
+curl https://two025-itcs383-jitnongnooong-2.onrender.com/api/v1/orders/customer/100
 ```
 
 ## Running Tests
@@ -214,16 +240,27 @@ If the backend cannot connect to the database:
 - Check that you are using the project’s default backend configuration.
 - If you created a custom `.env`, verify it is not overriding the cloud database settings.
 - Confirm your network can reach the hosted database service.
+- Confirm the Aiven MySQL service is powered on.
 
 If the frontend cannot reach the backend:
 
 - Make sure the backend is running on port `8080`.
-- Make sure the frontend is using `http://localhost:8080` as `VITE_API_BASE_URL`.
+- For local development, make sure the frontend is using `http://localhost:8080` as `VITE_API_BASE_URL`.
+- For the deployed web flow, make sure the frontend is using `https://two025-itcs383-jitnongnooong-2.onrender.com`.
 
 If demo login fails:
 
 - Confirm the shared database is reachable.
 - Check whether the shared demo data has been changed.
+
+If order history fails with a database error:
+
+- Confirm the `restaurant_reviews` table exists in the cloud database.
+
+If restaurant order status updates fail with `Data truncated for column 'status'`:
+
+- Update the `orders.status` enum in the cloud database so it includes:
+  `PENDING`, `CONFIRMED`, `PREPARING`, `READY_FOR_PICKUP`, `PICKED_UP`, `OUT_FOR_DELIVERY`, `DELIVERED`, `CANCELLED`, and `REFUNDED`.
 
 
 ### 2. System Workflow
