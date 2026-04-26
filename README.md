@@ -52,17 +52,17 @@ The current runnable implementation in this repository is:
     └── Backend-NodeJS/    # Active Express + MySQL backend
 ```
 
-## Local URLs
+## Development URLs
 
 | Service | URL |
 |---|---|
 | Frontend | http://localhost:5173 |
-| Node.js API | http://localhost:8080 |
-| API root | http://localhost:8080/api/v1 |
+| Deployed Node.js API | https://two025-itcs383-jitnongnooong-2.onrender.com |
+| Deployed API root | https://two025-itcs383-jitnongnooong-2.onrender.com/api/v1 |
 
-## Current Cloud Backend
+## Current Deployment
 
-The current deployed backend used by the web frontend is:
+The current web frontend is already connected to the deployed backend on Render, and that backend already uses the shared cloud MySQL database.
 
 ```text
 https://two025-itcs383-jitnongnooong-2.onrender.com
@@ -84,7 +84,33 @@ npm --version
 
 ## Quick Start
 
-### 1. Run the backend
+### 1. Run the frontend only
+
+```bash
+cd Implementations/Frontend
+npm install
+npm run dev
+```
+
+The frontend will start at `http://localhost:5173`.
+
+For the current version of this project, you do not need to run the backend or database locally.
+
+Already deployed for you:
+
+- Backend API on Render
+- Shared cloud MySQL database
+
+So for normal use, you do not need to:
+
+- start `Implementations/Backend-NodeJS`
+- install local MySQL
+- create a local database
+- create or edit a frontend `.env.local` file
+
+### 2. Optional: run the backend locally
+
+Only do this if you are specifically developing or debugging backend code.
 
 ```bash
 cd Implementations/Backend-NodeJS
@@ -92,15 +118,9 @@ npm install
 npm run dev
 ```
 
-The backend is already configured to use the shared cloud database, so you do not need to:
+The local API will start at `http://localhost:8080`.
 
-- install local MySQL
-- create a local database
-- create or edit a `.env` file
-
-The API will start at `http://localhost:8080`.
-
-To confirm the backend and database are running successfully, open:
+To confirm the local backend is running successfully, open:
 
 ```text
 http://localhost:8080/
@@ -112,23 +132,11 @@ You should see:
 {"message":"Welcome to MharRuengSang Node.js API"}
 ```
 
-### 2. Run the frontend
-
-Open a second terminal:
-
-```bash
-cd Implementations/Frontend
-npm install
-npm run dev
-```
-
-The frontend will start at `http://localhost:5173`.
-
 ## Backend Configuration
 
-- The backend uses the cloud database settings provided by the project.
-- No local database setup is required for a normal run.
-- No `.env` file is required unless you explicitly want to override the default configuration.
+- The deployed backend already uses the project's shared cloud database.
+- No local backend or local database setup is required for normal frontend development.
+- The local backend in `Implementations/Backend-NodeJS` is optional and only needed for backend work.
 
 ## Frontend API Configuration
 
@@ -171,17 +179,17 @@ Example OTP: `123456`
 ## Useful API Checks
 
 ```bash
-curl http://localhost:8080/
-curl http://localhost:8080/api/v1/restaurants
-curl http://localhost:8080/api/v1/orders/admin/stats
-```
-
-Useful deployed checks:
-
-```bash
 curl https://two025-itcs383-jitnongnooong-2.onrender.com/
 curl https://two025-itcs383-jitnongnooong-2.onrender.com/api/v1/restaurants/search
 curl https://two025-itcs383-jitnongnooong-2.onrender.com/api/v1/orders/customer/100
+```
+
+Optional local backend checks:
+
+```bash
+curl http://localhost:8080/
+curl http://localhost:8080/api/v1/restaurants
+curl http://localhost:8080/api/v1/orders/admin/stats
 ```
 
 ## Running Tests
@@ -244,9 +252,9 @@ If the backend cannot connect to the database:
 
 If the frontend cannot reach the backend:
 
-- Make sure the backend is running on port `8080`.
-- For local development, make sure the frontend is using `http://localhost:8080` as `VITE_API_BASE_URL`.
-- For the deployed web flow, make sure the frontend is using `https://two025-itcs383-jitnongnooong-2.onrender.com`.
+- For the default setup, make sure the frontend is using `https://two025-itcs383-jitnongnooong-2.onrender.com`.
+- If you intentionally switched to local backend development, make sure the backend is running on port `8080`.
+- For local backend development, make sure the frontend is using `http://localhost:8080` as `VITE_API_BASE_URL`.
 
 If demo login fails:
 
@@ -267,25 +275,13 @@ If restaurant order status updates fail with `Data truncated for column 'status'
 
 The system workflow in the current codebase is:
 
-1. The backend starts on `http://localhost:8080`.
-2. The backend connects to the shared cloud MySQL database.
-3. The frontend starts on `http://localhost:5173`.
-4. The frontend sends API requests to the backend using `/api/v1/...` endpoints.
-5. The backend processes authentication, restaurant, order, payment, rider, and customer requests.
-6. The backend reads from and writes to the shared database.
-7. The frontend displays returned data based on the logged-in user's role.
+1. The frontend starts on `http://localhost:5173`.
+2. The frontend sends API requests to the deployed backend using `/api/v1/...` endpoints.
+3. The deployed backend processes authentication, restaurant, order, payment, rider, and customer requests.
+4. The deployed backend reads from and writes to the shared cloud database.
+5. The frontend displays returned data based on the logged-in user's role.
 
-To verify that the backend is running correctly, open:
-
-```text
-http://localhost:8080/
-```
-
-You should see:
-
-```json
-{"message":"Welcome to MharRuengSang Node.js API"}
-```
+If you choose to run the backend locally for backend development, it follows the same flow through `http://localhost:8080`.
 
 ---
 
